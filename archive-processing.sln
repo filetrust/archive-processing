@@ -1,0 +1,38 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30621.155
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Service", "Source\Service\Service.csproj", "{4B1E4881-A53A-44DC-8703-5C2815314465}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Source", "Source", "{8E429F75-CBA5-4614-8883-C22B9DFC6C61}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Service", "Service", "{2051AFA0-E186-43BA-A5E4-4E3F7E00D4BA}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{DF80F901-EC43-479A-BA33-F657921966A5}"
+	ProjectSection(SolutionItems) = preProject
+		Dockerfile = Dockerfile
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4B1E4881-A53A-44DC-8703-5C2815314465}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B1E4881-A53A-44DC-8703-5C2815314465}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B1E4881-A53A-44DC-8703-5C2815314465}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B1E4881-A53A-44DC-8703-5C2815314465}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{4B1E4881-A53A-44DC-8703-5C2815314465} = {2051AFA0-E186-43BA-A5E4-4E3F7E00D4BA}
+		{2051AFA0-E186-43BA-A5E4-4E3F7E00D4BA} = {8E429F75-CBA5-4614-8883-C22B9DFC6C61}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B82E849B-5C92-440A-8A15-CB24167E3C71}
+	EndGlobalSection
+EndGlobal
