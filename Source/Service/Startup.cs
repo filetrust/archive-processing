@@ -38,6 +38,7 @@ namespace Service
         {
             services.AddScoped<IAdaptationOutcomeSender, AdaptationOutcomeSender>();
             services.AddTransient<IArchiveProcessor, ArchiveProcessor>();
+            services.AddTransient<IArchiveManager, ZipArchiveManager>();
             services.AddTransient<IFileManager, LocalFileManager>();
             services.AddSingleton<IArchiveProcessorConfig>(Config);
         }
