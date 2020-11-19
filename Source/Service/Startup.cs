@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Service.Configuration;
 using Service.Messaging;
 
@@ -36,6 +37,7 @@ namespace Service
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddLogging(configure => configure.AddConsole());
             services.AddScoped<IAdaptationOutcomeSender, AdaptationOutcomeSender>();
             services.AddTransient<IArchiveProcessor, ArchiveProcessor>();
             services.AddTransient<IArchiveManager, ZipArchiveManager>();

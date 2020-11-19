@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using NUnit.Framework;
@@ -17,6 +18,7 @@ namespace Service.Tests
             private Mock<IFileManager> _mockFileManager;
             private Mock<IArchiveManager> _mockArchiveManager;
             private Mock<IArchiveProcessorConfig> _mockConfig;
+            private Mock<ILogger<ArchiveProcessor>> _mockLogger;
 
             private ArchiveProcessor _archiveProcessor;
 
@@ -27,6 +29,7 @@ namespace Service.Tests
                 _mockFileManager = new Mock<IFileManager>();
                 _mockArchiveManager = new Mock<IArchiveManager>();
                 _mockConfig = new Mock<IArchiveProcessorConfig>();
+                _mockLogger = new Mock<ILogger<ArchiveProcessor>>();
 
                 _mockConfig.SetupGet(s => s.ProcessingTimeoutDuration).Returns(TimeSpan.FromSeconds(1));
 
@@ -35,7 +38,8 @@ namespace Service.Tests
                     _mockAdaptationOutcomeSender.Object,
                     _mockFileManager.Object,
                     _mockArchiveManager.Object,
-                    _mockConfig.Object);
+                    _mockConfig.Object,
+                    _mockLogger.Object);
             }
 
             [Test]
