@@ -1,6 +1,7 @@
 ﻿using Service.Configuration;
 using Service.Messaging;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -39,14 +40,14 @@ namespace Service
 
                 if (!isCompletedSuccessfully)
                 {
-                    Console.WriteLine($"Error: Processing 'input' {_config.ArchiveFileId} exceeded {_processingTimeoutDuration}s");
+                    Console.WriteLine($"Error: File Id: {_config.ArchiveFileId} exceeded {_processingTimeoutDuration}s");
                     ClearRebuiltStore(_config.OutputPath);
                     ClearSourceStore(_tmpOriginalDirectory);
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine($"Error: Processing 'input' {_config.ArchiveFileId} threw exception {e.Message}");
+                Console.WriteLine($"Error: File Id: {_config.ArchiveFileId} threw exception {e.Message}");
                 ClearRebuiltStore(_config.OutputPath);
                 ClearSourceStore(_tmpOriginalDirectory);
                 _adaptationOutcomeSender.Send(FileOutcome.Error, _config.ArchiveFileId, _config.ReplyTo);
@@ -59,7 +60,7 @@ namespace Service
             
             if (!_fileManager.FileExists(_config.InputPath))
             {
-                throw new FileNotFoundException($"File does not exist at {_config.InputPath}");
+                throw new FileNotFoundException($"File Id: {_config.ArchiveFileId} does not exist at {_config.InputPath}");
             }
 
             _fileManager.CreateDirectory(_tmpOriginalDirectory);
