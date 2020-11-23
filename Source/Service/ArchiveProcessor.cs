@@ -19,6 +19,7 @@ namespace Service
         private readonly ILogger<ArchiveProcessor> _logger;
 
         private readonly TimeSpan _processingTimeoutDuration;
+        private readonly CancellationTokenSource _cancellationTokenSource;
 
         private string _tmpOriginalDirectory => $"{_config.InputPath}_tmp";
         private string _tmpRebuiltDirectory => $"{_config.OutputPath}_tmp";
@@ -34,6 +35,8 @@ namespace Service
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             _processingTimeoutDuration = _config.ProcessingTimeoutDuration;
+            _cancellationTokenSource = new CancellationTokenSource();
+
         }
 
         public void Process()
@@ -50,14 +53,16 @@ namespace Service
                 if (!isCompletedSuccessfully)
                 {
                     _logger.LogError($"File Id: {_config.ArchiveFileId} exceeded {_processingTimeoutDuration}s");
-                    ClearRebuiltStore(_config.OutputPath);
+                    _cancellationTokenSource.Cancel();
+                    ClearRebuiltStore(_tmpRebuiltDirectory, _config.OutputPath);
                     ClearSourceStore(_tmpOriginalDirectory);
                 }
             }
             catch (Exception e)
             {
                 _logger.LogError($"File Id: {_config.ArchiveFileId} threw exception {e.Message}");
-                ClearRebuiltStore(_config.OutputPath);
+                _cancellationTokenSource.Cancel();
+                ClearRebuiltStore(_tmpRebuiltDirectory, _config.OutputPath);
                 ClearSourceStore(_tmpOriginalDirectory);
                 _adaptationOutcomeSender.Send(FileOutcome.Error, _config.ArchiveFileId, _config.ReplyTo);
             }
@@ -83,7 +88,7 @@ namespace Service
                 var filename = Path.GetFileName(file);
                 _logger.LogInformation($"File Id: {_config.ArchiveFileId}, File Name: {filename} about to be sent");
 
-                var status = _adaptationRequestSender.Send(Guid.NewGuid().ToString(), file, $"{_tmpRebuiltDirectory}/{filename}", new CancellationToken());
+                var status = _adaptationRequestSender.Send(Guid.NewGuid().ToString(), file, $"{_tmpRebuiltDirectory}/{filename}", _cancellationTokenSource.Token);
 
                 _logger.LogInformation($"File Id: {_config.ArchiveFileId}, File Name: {filename}, status: {status}");
             }
@@ -93,15 +98,29 @@ namespace Service
 
             _adaptationOutcomeSender.Send(FileOutcome.Replace, _config.ArchiveFileId, _config.ReplyTo);
             ClearSourceStore(_tmpOriginalDirectory);
+            ClearRebuiltStore(_tmpRebuiltDirectory);
 
             return Task.CompletedTask;
         }
 
-        private void ClearRebuiltStore(string path)
+        private void ClearRebuiltStore(string tempDirectory)
         {
-            if (_fileManager.FileExists(path))
+            if (_fileManager.DirectoryExists(tempDirectory))
             {
-                _fileManager.DeleteFile(path);
+                _fileManager.DeleteDirectory(tempDirectory);
+            }
+        }
+
+        private void ClearRebuiltStore(string tempDirectory, string filePath)
+        {
+            if (_fileManager.DirectoryExists(tempDirectory))
+            {
+                _fileManager.DeleteDirectory(tempDirectory);
+            }
+
+            if (_fileManager.FileExists(filePath))
+            {
+                _fileManager.DeleteFile(filePath);
             }
         }
 

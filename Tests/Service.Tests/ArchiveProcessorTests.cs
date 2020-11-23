@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Service.Configuration;
 using Service.Messaging;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Service.Tests
@@ -46,7 +47,7 @@ namespace Service.Tests
             }
 
             [Test]
-            public void ErrorIsSent_And_RebuiltFolderIsCleaner_When_FileDoesNotExists()
+            public void ErrorIsSent_And_RebuiltFolderIsCleaned_When_FileDoesNotExists()
             {
                 // Arrange
                 const string expectedReplyTo = "reply-to-me";
@@ -75,15 +76,22 @@ namespace Service.Tests
             }
 
             [Test]
-            public void FilesAreExtractedAndRepacked_And_ReplaceIsSent_When_FileExists()
+            public void FilesAreExtractedAndRebuilt_And_ReplaceIsSent_When_FileExists()
             {
                 // Arrange
                 const string expectedReplyTo = "reply-to-me";
                 const string expectedInput = "Folder-To-Process";
                 const string expectedOutput = "Folder-To-Place";
                 
-                var expectedTmpFolder = $"{expectedInput}_tmp";
+                var expectedOriginalTmpFolder = $"{expectedInput}_tmp";
+                var expectedRebuiltTmpFolder = $"{expectedOutput}_tmp";
                 var expectedFileId = Guid.NewGuid().ToString();
+
+                var filePathOne = $"{expectedOriginalTmpFolder}/FileOne";
+                var filePathTwo = $"{expectedOriginalTmpFolder}/FileTwo";
+                var filePathThree = $"{expectedOriginalTmpFolder}/FileThree";
+
+                var files = new string[] { filePathOne, filePathTwo, filePathThree };
 
                 _mockConfig.SetupGet(s => s.ArchiveFileId).Returns(expectedFileId);
                 _mockConfig.SetupGet(s => s.ReplyTo).Returns(expectedReplyTo);
@@ -91,17 +99,26 @@ namespace Service.Tests
                 _mockConfig.SetupGet(s => s.OutputPath).Returns(expectedOutput);
                 _mockFileManager.Setup(s => s.FileExists(It.IsAny<string>())).Returns(true);
 
+                _mockFileManager.Setup(s => s.GetFiles(It.IsAny<string>()))
+                    .Returns(files);
+
                 // Act
                 _archiveProcessor.Process();
 
                 // Assert
                 _mockArchiveManager.Verify(s => s.ExtractArchive(
                     It.Is<string>(archive => archive == expectedInput),
-                    It.Is<string>(output => output == expectedTmpFolder)));
+                    It.Is<string>(output => output == expectedOriginalTmpFolder)));
 
                 _mockArchiveManager.Verify(s => s.CreateArchive(
-                    It.Is<string>(input => input == expectedTmpFolder),
+                    It.Is<string>(input => input == expectedRebuiltTmpFolder),
                     It.Is<string>(archive => archive == expectedOutput)));
+
+                _mockAdaptationRequestSender.Verify(s => s.Send(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()), Times.Exactly(files.Length));
 
                 _mockAdaptationOutcomeSender.Verify(s => s.Send(
                     It.Is<string>(status => status == FileOutcome.Replace),
@@ -110,14 +127,15 @@ namespace Service.Tests
             }
 
             [Test]
-            public void OriginalTmpFolder_Is_Cleared_On_Success()
+            public void Successful_Process_Should_Clear_Temp_Directories()
             {
                 // Arrange
                 const string expectedReplyTo = "reply-to-me";
                 const string expectedInput = "Folder-To-Process";
                 const string expectedOutput = "Folder-To-Place";
 
-                var expectedTmpFolder = $"{expectedInput}_tmp";
+                var expectedOriginalTmpFolder = $"{expectedInput}_tmp";
+                var expectedRebuiltTmpFolder = $"{expectedOutput}_tmp";
                 var expectedFileId = Guid.NewGuid().ToString();
 
                 _mockConfig.SetupGet(s => s.ArchiveFileId).Returns(expectedFileId);
@@ -131,37 +149,70 @@ namespace Service.Tests
                 _archiveProcessor.Process();
 
                 // Assert
-                _mockFileManager.Verify(m => m.DeleteDirectory(It.Is<string>(input => input == expectedTmpFolder)), Times.Once, "Original Temp Folder should be cleared in event of long running process");
-
+                _mockFileManager.Verify(m => m.DeleteDirectory(It.Is<string>(input => input == expectedOriginalTmpFolder)), Times.Once, "Original Temp Folder should be cleared on success");
+                _mockFileManager.Verify(m => m.DeleteDirectory(It.Is<string>(input => input == expectedRebuiltTmpFolder)), Times.Once, "Rebuilt Temp Folder should be cleared on success");
             }
 
             [Test]
             public void Long_Running_Process_Should_Clear_Output_Store()
             {
+                // Arrange
+                const string expectedReplyTo = "reply-to-me";
+                const string expectedInput = "Folder-To-Process";
+                const string expectedOutput = "Folder-To-Place";
+
+                var expectedOriginalTmpFolder = $"{expectedInput}_tmp";
+                var expectedRebuiltTmpFolder = $"{expectedOutput}_tmp";
+                var expectedFileId = Guid.NewGuid().ToString();
+
+                _mockConfig.SetupGet(s => s.ArchiveFileId).Returns(expectedFileId);
+                _mockConfig.SetupGet(s => s.ReplyTo).Returns(expectedReplyTo);
+                _mockConfig.SetupGet(s => s.InputPath).Returns(expectedInput);
+                _mockConfig.SetupGet(s => s.OutputPath).Returns(expectedOutput);
+
                 _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>()))
                     .Callback((string t, string u) => Task.Delay(TimeSpan.FromMinutes(10)).Wait());
                 _mockFileManager.Setup(m => m.FileExists(It.IsAny<string>())).Returns(true);
                 _mockFileManager.Setup(m => m.DirectoryExists(It.IsAny<string>())).Returns(true);
 
+                // Act
                 _archiveProcessor.Process();
 
-                _mockFileManager.Verify(m => m.DeleteFile(It.IsAny<string>()), Times.Once, "Store should be cleared in event of long running process");
-                _mockFileManager.Verify(m => m.DeleteDirectory(It.IsAny<string>()), Times.Once, "Original Temp Folder should be cleared in event of long running process");
+                // Assert
+                _mockFileManager.Verify(m => m.DeleteFile(It.Is<string>(s => s == expectedOutput)), Times.Once, "Rebuilt store should be cleared in event of long running process");
+                _mockFileManager.Verify(m => m.DeleteDirectory(It.Is<string>(s => s == expectedOriginalTmpFolder)), Times.Once, "Original Temp Folder should be cleared in event of long running process");
+                _mockFileManager.Verify(m => m.DeleteDirectory(It.Is<string>(s => s == expectedRebuiltTmpFolder)), Times.Once, "Original Temp Folder should be cleared in event of long running process");
             }
 
             [Test]
             public void Exception_Thrown_In_Process_Should_Clear_Output_Store()
             {
+                // Arrange
+                const string expectedReplyTo = "reply-to-me";
+                const string expectedInput = "Folder-To-Process";
+                const string expectedOutput = "Folder-To-Place";
+
+                var expectedOriginalTmpFolder = $"{expectedInput}_tmp";
+                var expectedRebuiltTmpFolder = $"{expectedOutput}_tmp";
+                var expectedFileId = Guid.NewGuid().ToString();
+
+                _mockConfig.SetupGet(s => s.ArchiveFileId).Returns(expectedFileId);
+                _mockConfig.SetupGet(s => s.ReplyTo).Returns(expectedReplyTo);
+                _mockConfig.SetupGet(s => s.InputPath).Returns(expectedInput);
+                _mockConfig.SetupGet(s => s.OutputPath).Returns(expectedOutput);
+
                 _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>()))
                     .Throws(new Exception());
                 _mockFileManager.Setup(m => m.FileExists(It.IsAny<string>())).Returns(true);
                 _mockFileManager.Setup(m => m.DirectoryExists(It.IsAny<string>())).Returns(true);
 
+                // Act
                 _archiveProcessor.Process();
 
-                _mockFileManager.Verify(m => m.DeleteFile(It.IsAny<string>()), Times.Once, "Store should be cleared in event of long running process");
-                _mockFileManager.Verify(m => m.DeleteDirectory(It.IsAny<string>()), Times.Once, "Original Temp Folder should be cleared in event of long running process");
-
+                // Assert
+                _mockFileManager.Verify(m => m.DeleteFile(It.Is<string>(s => s == expectedOutput)), Times.Once, "Rebuilt store should be cleared in event of an exception being thrown");
+                _mockFileManager.Verify(m => m.DeleteDirectory(It.Is<string>(s => s == expectedOriginalTmpFolder)), Times.Once, "Original Temp Folder should be cleared in event of an exception being thrown");
+                _mockFileManager.Verify(m => m.DeleteDirectory(It.Is<string>(s => s == expectedRebuiltTmpFolder)), Times.Once, "Original Temp Folder should be cleared in event of an exception being thrown");
             }
         }
     }

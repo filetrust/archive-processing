@@ -54,8 +54,7 @@ namespace Service.Messaging
                     var headers = ea.BasicProperties.Headers;
                     var body = ea.Body.ToArray();
 
-                    var response = _responseProcessor.Process(headers, body);
-                    //_channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                    var response = _responseProcessor.Process(headers);
 
                     _respQueue.Add(response);
                 }

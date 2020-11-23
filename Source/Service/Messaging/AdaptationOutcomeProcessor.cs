@@ -17,7 +17,7 @@ namespace Service.Messaging
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public AdaptationOutcome Process(IDictionary<string, object> headers, byte[] body)
+        public AdaptationOutcome Process(IDictionary<string, object> headers)
         {
             try
             {

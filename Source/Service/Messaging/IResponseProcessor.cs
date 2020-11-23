@@ -5,6 +5,6 @@ namespace Service.Messaging
 {
     public interface IResponseProcessor
     {
-        AdaptationOutcome Process(IDictionary<string, object> headers, byte[] body);
+        AdaptationOutcome Process(IDictionary<string, object> headers);
     }
 }
