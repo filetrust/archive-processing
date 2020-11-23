@@ -39,6 +39,8 @@ namespace Service
         {
             services.AddLogging(configure => configure.AddConsole());
             services.AddScoped<IAdaptationOutcomeSender, AdaptationOutcomeSender>();
+            services.AddScoped<IAdaptationRequestSender, AdaptationRequestSender>();
+            services.AddScoped<IResponseProcessor, AdaptationOutcomeProcessor>();
             services.AddTransient<IArchiveProcessor, ArchiveProcessor>();
             services.AddTransient<IArchiveManager, ZipArchiveManager>();
             services.AddTransient<IFileManager, LocalFileManager>();

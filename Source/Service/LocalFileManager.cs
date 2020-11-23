@@ -33,6 +33,11 @@ namespace Service
             return File.Exists(path);
         }
 
+        public string[] GetFiles(string path)
+        {
+            return Directory.GetFiles(path);
+        }
+
         public byte[] ReadFile(string path)
         {
             return File.ReadAllBytes(path);

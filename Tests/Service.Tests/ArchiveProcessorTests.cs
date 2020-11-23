@@ -15,6 +15,7 @@ namespace Service.Tests
         public class ProcessMethod : ArchiveProcessorTests
         {
             private Mock<IAdaptationOutcomeSender> _mockAdaptationOutcomeSender;
+            private Mock<IAdaptationRequestSender> _mockAdaptationRequestSender;
             private Mock<IFileManager> _mockFileManager;
             private Mock<IArchiveManager> _mockArchiveManager;
             private Mock<IArchiveProcessorConfig> _mockConfig;
@@ -26,6 +27,7 @@ namespace Service.Tests
             public void SetUp()
             {
                 _mockAdaptationOutcomeSender = new Mock<IAdaptationOutcomeSender>();
+                _mockAdaptationRequestSender = new Mock<IAdaptationRequestSender>();
                 _mockFileManager = new Mock<IFileManager>();
                 _mockArchiveManager = new Mock<IArchiveManager>();
                 _mockConfig = new Mock<IArchiveProcessorConfig>();
@@ -36,6 +38,7 @@ namespace Service.Tests
 
                 _archiveProcessor = new ArchiveProcessor(
                     _mockAdaptationOutcomeSender.Object,
+                    _mockAdaptationRequestSender.Object,
                     _mockFileManager.Object,
                     _mockArchiveManager.Object,
                     _mockConfig.Object,

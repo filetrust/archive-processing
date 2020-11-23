@@ -4,6 +4,7 @@ using Service.Messaging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Service
@@ -11,6 +12,7 @@ namespace Service
     public class ArchiveProcessor : IArchiveProcessor
     {
         private readonly IAdaptationOutcomeSender _adaptationOutcomeSender;
+        private readonly IAdaptationRequestSender _adaptationRequestSender;
         private readonly IFileManager _fileManager;
         private readonly IArchiveManager _archiveManager;
         private readonly IArchiveProcessorConfig _config;
@@ -19,10 +21,13 @@ namespace Service
         private readonly TimeSpan _processingTimeoutDuration;
 
         private string _tmpOriginalDirectory => $"{_config.InputPath}_tmp";
+        private string _tmpRebuiltDirectory => $"{_config.OutputPath}_tmp";
 
-        public ArchiveProcessor(IAdaptationOutcomeSender adaptationOutcomeSender, IFileManager fileManager, IArchiveManager archiveManager,  IArchiveProcessorConfig config, ILogger<ArchiveProcessor> logger)
+        public ArchiveProcessor(IAdaptationOutcomeSender adaptationOutcomeSender, IAdaptationRequestSender adaptationRequestSender, 
+            IFileManager fileManager, IArchiveManager archiveManager,  IArchiveProcessorConfig config, ILogger<ArchiveProcessor> logger)
         {
             _adaptationOutcomeSender = adaptationOutcomeSender ?? throw new ArgumentNullException(nameof(adaptationOutcomeSender));
+            _adaptationRequestSender = adaptationRequestSender ?? throw new ArgumentNullException(nameof(adaptationRequestSender));
             _fileManager = fileManager ?? throw new ArgumentNullException(nameof(fileManager));
             _archiveManager = archiveManager ?? throw new ArgumentNullException(nameof(archiveManager));
             _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -68,12 +73,23 @@ namespace Service
             }
 
             _fileManager.CreateDirectory(_tmpOriginalDirectory);
+            _fileManager.CreateDirectory(_tmpRebuiltDirectory);
 
             _logger.LogInformation($"File Id: {_config.ArchiveFileId} Extracting archive to temp folder {_tmpOriginalDirectory}");
             _archiveManager.ExtractArchive(_config.InputPath, _tmpOriginalDirectory);
 
+            foreach(var file in _fileManager.GetFiles(_tmpOriginalDirectory))
+            {
+                var filename = Path.GetFileName(file);
+                _logger.LogInformation($"File Id: {_config.ArchiveFileId}, File Name: {filename} about to be sent");
+
+                var status = _adaptationRequestSender.Send(Guid.NewGuid().ToString(), file, $"{_tmpRebuiltDirectory}/{filename}", new CancellationToken());
+
+                _logger.LogInformation($"File Id: {_config.ArchiveFileId}, File Name: {filename}, status: {status}");
+            }
+
             _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive.");
-            _archiveManager.CreateArchive(_tmpOriginalDirectory, _config.OutputPath);
+            _archiveManager.CreateArchive(_tmpRebuiltDirectory, _config.OutputPath);
 
             _adaptationOutcomeSender.Send(FileOutcome.Replace, _config.ArchiveFileId, _config.ReplyTo);
             ClearSourceStore(_tmpOriginalDirectory);
