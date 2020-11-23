@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Service.Configuration;
+using Service.Enums;
 using Service.Messaging;
 using System;
 using System.Collections.Generic;
@@ -36,7 +37,6 @@ namespace Service
 
             _processingTimeoutDuration = _config.ProcessingTimeoutDuration;
             _cancellationTokenSource = new CancellationTokenSource();
-
         }
 
         public void Process()
@@ -81,20 +81,31 @@ namespace Service
             _fileManager.CreateDirectory(_tmpRebuiltDirectory);
 
             _logger.LogInformation($"File Id: {_config.ArchiveFileId} Extracting archive to temp folder {_tmpOriginalDirectory}");
-            _archiveManager.ExtractArchive(_config.InputPath, _tmpOriginalDirectory);
+            var fileMappings = _archiveManager.ExtractArchive(_config.InputPath, _tmpOriginalDirectory);
 
-            foreach(var file in _fileManager.GetFiles(_tmpOriginalDirectory))
-            {
-                var filename = Path.GetFileName(file);
-                _logger.LogInformation($"File Id: {_config.ArchiveFileId}, File Name: {filename} about to be sent");
-
-                var status = _adaptationRequestSender.Send(Guid.NewGuid().ToString(), file, $"{_tmpRebuiltDirectory}/{filename}", _cancellationTokenSource.Token);
-
-                _logger.LogInformation($"File Id: {_config.ArchiveFileId}, File Name: {filename}, status: {status}");
-            }
-
-            _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive.");
+            _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive in temp folder {_tmpRebuiltDirectory}");
             _archiveManager.CreateArchive(_tmpRebuiltDirectory, _config.OutputPath);
+
+            foreach(var originalFilePath in _fileManager.GetFiles(_tmpOriginalDirectory))
+            {
+                var archivedFileId = Path.GetFileName(originalFilePath);
+                var rebuiltPath = $"{_tmpRebuiltDirectory}/{archivedFileId}";
+
+                _logger.LogInformation($"Archive File Id: {_config.ArchiveFileId}, Archived File Id: {archivedFileId} about to be sent");
+
+                var status = _adaptationRequestSender.Send(archivedFileId, originalFilePath, rebuiltPath, _cancellationTokenSource.Token);
+
+                _logger.LogInformation($"Archive File Id: {_config.ArchiveFileId}, Archived File Id: {archivedFileId}, status: {status}");
+
+                if (status == AdaptationOutcome.Replace)
+                {
+                    _archiveManager.AddToArchive(_config.OutputPath, rebuiltPath, fileMappings[archivedFileId]);
+                }
+                else if (status == AdaptationOutcome.Unmodified)
+                {
+                    _archiveManager.AddToArchive(_config.OutputPath, originalFilePath, fileMappings[archivedFileId]);
+                }
+            }
 
             _adaptationOutcomeSender.Send(FileOutcome.Replace, _config.ArchiveFileId, _config.ReplyTo);
             ClearSourceStore(_tmpOriginalDirectory);

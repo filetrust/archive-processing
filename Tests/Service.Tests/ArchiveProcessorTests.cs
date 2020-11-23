@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Service.Configuration;
 using Service.Messaging;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -87,17 +88,29 @@ namespace Service.Tests
                 var expectedRebuiltTmpFolder = $"{expectedOutput}_tmp";
                 var expectedFileId = Guid.NewGuid().ToString();
 
-                var filePathOne = $"{expectedOriginalTmpFolder}/FileOne";
-                var filePathTwo = $"{expectedOriginalTmpFolder}/FileTwo";
-                var filePathThree = $"{expectedOriginalTmpFolder}/FileThree";
+                var fileOneId = Guid.NewGuid().ToString();
+                var fileTwoId = Guid.NewGuid().ToString();
+                var fileThreeId = Guid.NewGuid().ToString();
+
+                var filePathOne = $"{expectedOriginalTmpFolder}/{fileOneId}";
+                var filePathTwo = $"{expectedOriginalTmpFolder}/{fileTwoId}";
+                var filePathThree = $"{expectedOriginalTmpFolder}/{fileThreeId}";
 
                 var files = new string[] { filePathOne, filePathTwo, filePathThree };
+
+                var fileMappings = new Dictionary<string, string>()
+                {
+                    { fileOneId, "FileOne" },
+                    { fileTwoId, "FileTwo" },
+                    { fileThreeId, "FileThree" },
+                };
 
                 _mockConfig.SetupGet(s => s.ArchiveFileId).Returns(expectedFileId);
                 _mockConfig.SetupGet(s => s.ReplyTo).Returns(expectedReplyTo);
                 _mockConfig.SetupGet(s => s.InputPath).Returns(expectedInput);
                 _mockConfig.SetupGet(s => s.OutputPath).Returns(expectedOutput);
                 _mockFileManager.Setup(s => s.FileExists(It.IsAny<string>())).Returns(true);
+                _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>())).Returns(fileMappings);
 
                 _mockFileManager.Setup(s => s.GetFiles(It.IsAny<string>()))
                     .Returns(files);
