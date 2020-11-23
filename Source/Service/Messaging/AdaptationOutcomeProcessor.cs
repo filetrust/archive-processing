@@ -21,12 +21,12 @@ namespace Service.Messaging
         {
             try
             {
-                Guid fileId = Guid.Empty;
-
                 if (!headers.ContainsKey("file-id"))
                     throw new AdaptationServiceClientException("Missing File Id");
 
                 var fileIdString = Encoding.UTF8.GetString((byte[])headers["file-id"]);
+
+                Guid fileId = Guid.Empty;
 
                 if (fileIdString == null || !Guid.TryParse(fileIdString, out fileId))
                     throw new AdaptationServiceClientException($"Error in FileID: { fileIdString ?? "-" }");

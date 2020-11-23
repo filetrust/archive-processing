@@ -19,7 +19,7 @@ namespace Service
             ZipFile.CreateFromDirectory(sourceFolderPath, archiveFilePath);
         }
 
-        public Dictionary<string, string> ExtractArchive(string archiveFilePath, string targetPath)
+        public IDictionary<string, string> ExtractArchive(string archiveFilePath, string targetPath)
         {
             var fileMapping = new Dictionary<string, string>();
 
