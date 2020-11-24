@@ -45,6 +45,9 @@ namespace Service
             services.AddTransient<IArchiveProcessor, ArchiveProcessor>();
             services.AddTransient<IArchiveManager, ZipArchiveManager>();
             services.AddTransient<IFileManager, LocalFileManager>();
+            services.AddScoped<IAdaptationResponseCollection, AdaptationResponseCollection>();
+            services.AddTransient<IAdaptationResponseConsumer, AdaptationResponseConsumer>();
+            services.AddScoped<IAdaptationResponseProducer, AdaptationResponseProducer>();
             services.AddSingleton<IArchiveProcessorConfig>(Config);
         }
     }
