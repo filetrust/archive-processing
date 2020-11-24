@@ -3,6 +3,7 @@ using Service.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Service
 {
@@ -22,9 +23,9 @@ namespace Service
             _collection.CompleteAdding();
         }
 
-        public KeyValuePair<Guid, AdaptationOutcome> Take()
+        public KeyValuePair<Guid, AdaptationOutcome> Take(CancellationToken token)
         {
-            return _collection.Take();
+            return _collection.Take(token);
         }
     }
 }

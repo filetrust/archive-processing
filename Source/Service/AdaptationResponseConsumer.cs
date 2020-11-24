@@ -4,6 +4,7 @@ using Service.Enums;
 using Service.Interfaces;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Service
@@ -23,13 +24,13 @@ namespace Service
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public Task ConsumeResponses(IDictionary<string, string> fileMappings, string rebuiltDir, string originalDir)
+        public Task ConsumeResponses(IDictionary<string, string> fileMappings, string rebuiltDir, string originalDir, CancellationToken token)
         {
             return Task.Factory.StartNew(() =>
             {
                 while (!_collection.IsCompleted)
                 {
-                    var response = _collection.Take();
+                    var response = _collection.Take(token);
 
                     _logger.LogInformation($"Archive File Id: {_config.ArchiveFileId}, Archived File Id: {response.Key}, status: {response.Value}");
 
