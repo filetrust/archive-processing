@@ -86,8 +86,10 @@ namespace Service
             _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive in temp folder {_tmpRebuiltDirectory}");
             _archiveManager.CreateArchive(_tmpRebuiltDirectory, _config.OutputPath);
 
-            SendMessages().Wait();
-            ConsumeResponses(fileMappings).Wait();
+            var consumerTask = ConsumeResponses(fileMappings);
+            var senderTask = SendMessages();
+
+            Task.WaitAll(consumerTask, senderTask);
 
             _adaptationOutcomeSender.Send(FileOutcome.Replace, _config.ArchiveFileId, _config.ReplyTo);
             ClearSourceStore(_tmpOriginalDirectory);
@@ -122,17 +124,14 @@ namespace Service
         {
             return Task.Factory.StartNew(() =>
             {
-                foreach (var originalFilePath in _fileManager.GetFiles(_tmpOriginalDirectory))
-                {
+                Parallel.ForEach(_fileManager.GetFiles(_tmpOriginalDirectory), (originalFilePath) => {
                     var archivedFileId = Path.GetFileName(originalFilePath);
                     var rebuiltPath = $"{_tmpRebuiltDirectory}/{archivedFileId}";
 
                     _logger.LogInformation($"Archive File Id: {_config.ArchiveFileId}, Archived File Id: {archivedFileId} about to be sent");
 
-                    _adaptationRequestSender.Send(archivedFileId, originalFilePath, rebuiltPath, _cancellationTokenSource.Token);
-                }
-
-                _adaptationRequestSender.ResponseQueue.CompleteAdding();
+                    _adaptationRequestSender.Send(archivedFileId, $"/var/source/{_config.ArchiveFileId}_tmp/{archivedFileId}", $"/var/target/{_config.ArchiveFileId}_tmp/{archivedFileId}", _cancellationTokenSource.Token);
+                });
             });
         }
 

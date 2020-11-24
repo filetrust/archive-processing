@@ -3,8 +3,10 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using NUnit.Framework;
 using Service.Configuration;
+using Service.Enums;
 using Service.Messaging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -88,9 +90,9 @@ namespace Service.Tests
                 var expectedRebuiltTmpFolder = $"{expectedOutput}_tmp";
                 var expectedFileId = Guid.NewGuid().ToString();
 
-                var fileOneId = Guid.NewGuid().ToString();
-                var fileTwoId = Guid.NewGuid().ToString();
-                var fileThreeId = Guid.NewGuid().ToString();
+                var fileOneId = Guid.NewGuid();
+                var fileTwoId = Guid.NewGuid();
+                var fileThreeId = Guid.NewGuid();
 
                 var filePathOne = $"{expectedOriginalTmpFolder}/{fileOneId}";
                 var filePathTwo = $"{expectedOriginalTmpFolder}/{fileTwoId}";
@@ -100,9 +102,9 @@ namespace Service.Tests
 
                 var fileMappings = new Dictionary<string, string>()
                 {
-                    { fileOneId, "FileOne" },
-                    { fileTwoId, "FileTwo" },
-                    { fileThreeId, "FileThree" },
+                    { fileOneId.ToString(), "FileOne" },
+                    { fileTwoId.ToString(), "FileTwo" },
+                    { fileThreeId.ToString(), "FileThree" },
                 };
 
                 _mockConfig.SetupGet(s => s.ArchiveFileId).Returns(expectedFileId);
@@ -111,6 +113,21 @@ namespace Service.Tests
                 _mockConfig.SetupGet(s => s.OutputPath).Returns(expectedOutput);
                 _mockFileManager.Setup(s => s.FileExists(It.IsAny<string>())).Returns(true);
                 _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>())).Returns(fileMappings);
+
+                var respQueue = new Mock<IProducerConsumerCollection<KeyValuePair<Guid, AdaptationOutcome>>>();
+
+                _mockAdaptationRequestSender.SetupGet(s => s.ResponseQueue).Returns(new BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>>(respQueue.Object));
+
+                respQueue.SetupSequence(s => s.TryTake())
+                    .Returns(new KeyValuePair<Guid, AdaptationOutcome>(fileOneId, AdaptationOutcome.Replace))
+                    .Returns(new KeyValuePair<Guid, AdaptationOutcome>(fileTwoId, AdaptationOutcome.Replace))
+                    .Returns(new KeyValuePair<Guid, AdaptationOutcome>(fileThreeId, AdaptationOutcome.Replace));
+
+                respQueue.SetupSequence(s => s.)
+                    .Returns(false)
+                    .Returns(false)
+                    .Returns(false)
+                    .Returns(true);
 
                 _mockFileManager.Setup(s => s.GetFiles(It.IsAny<string>()))
                     .Returns(files);

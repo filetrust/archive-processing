@@ -22,6 +22,9 @@ namespace Service.Messaging
         private readonly IConnection _connection;
         private readonly EventingBasicConsumer _consumer;
 
+        private int _sentMessageCount = 0;
+        private int _receivedMessageCount = 0;
+
         public BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>> ResponseQueue { get; } = new BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>>();
 
         public AdaptationRequestSender(IResponseProcessor responseProcessor, ILogger<AdaptationRequestSender> logger, IArchiveProcessorConfig config)
@@ -49,6 +52,7 @@ namespace Service.Messaging
             {
                 try
                 {
+                    _receivedMessageCount++;
                     _logger.LogInformation($"Received message: Exchange Name: '{ea.Exchange}', Routing Key: '{ea.RoutingKey}'");
                     var headers = ea.BasicProperties.Headers;
                     var body = ea.Body.ToArray();
@@ -62,6 +66,9 @@ namespace Service.Messaging
                     _logger.LogError(ex, $"Error Processing 'input'");
                     ResponseQueue.Add(new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error));
                 }
+
+                if (_receivedMessageCount == _sentMessageCount)
+                    ResponseQueue.CompleteAdding();
             };
 
             _logger.LogInformation($"AdaptationRequestSender Connection established to {config.AdaptationRequestQueueHostname}");
@@ -111,6 +118,8 @@ namespace Service.Messaging
                                  routingKey: "adaptation-request",
                                  basicProperties: messageProperties,
                                  body: body);
+
+            _sentMessageCount++;
         }
     }
 }
