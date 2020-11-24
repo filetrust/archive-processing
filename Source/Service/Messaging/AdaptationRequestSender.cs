@@ -18,13 +18,12 @@ namespace Service.Messaging
 
         private readonly IResponseProcessor _responseProcessor;
         private readonly ILogger<AdaptationRequestSender> _logger;
-
-        private readonly BlockingCollection<AdaptationOutcome> _respQueue = new BlockingCollection<AdaptationOutcome>();
-
         private readonly IModel _channel;
         private readonly IConnection _connection;
         private readonly EventingBasicConsumer _consumer;
-        
+
+        public BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>> ResponseQueue { get; } = new BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>>();
+
         public AdaptationRequestSender(IResponseProcessor responseProcessor, ILogger<AdaptationRequestSender> logger, IArchiveProcessorConfig config)
         {
             _responseProcessor = responseProcessor ?? throw new ArgumentNullException(nameof(responseProcessor));
@@ -56,12 +55,12 @@ namespace Service.Messaging
 
                     var response = _responseProcessor.Process(headers);
 
-                    _respQueue.Add(response);
+                    ResponseQueue.Add(response);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"Error Processing 'input'");
-                    _respQueue.Add(AdaptationOutcome.Error);
+                    ResponseQueue.Add(new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error));
                 }
             };
 
@@ -89,7 +88,7 @@ namespace Service.Messaging
             GC.SuppressFinalize(this);
         }
 
-        public AdaptationOutcome Send(string fileId, string originalStoreFilePath, string rebuiltStoreFilePath, CancellationToken processingCancellationToken)
+        public void Send(string fileId, string originalStoreFilePath, string rebuiltStoreFilePath, CancellationToken processingCancellationToken)
         {
             IDictionary<string, object> headerMap = new Dictionary<string, object>
             {
@@ -112,8 +111,6 @@ namespace Service.Messaging
                                  routingKey: "adaptation-request",
                                  basicProperties: messageProperties,
                                  body: body);
-
-            return _respQueue.Take(processingCancellationToken);
         }
     }
 }

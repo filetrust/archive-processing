@@ -86,32 +86,54 @@ namespace Service
             _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive in temp folder {_tmpRebuiltDirectory}");
             _archiveManager.CreateArchive(_tmpRebuiltDirectory, _config.OutputPath);
 
-            foreach(var originalFilePath in _fileManager.GetFiles(_tmpOriginalDirectory))
-            {
-                var archivedFileId = Path.GetFileName(originalFilePath);
-                var rebuiltPath = $"{_tmpRebuiltDirectory}/{archivedFileId}";
-
-                _logger.LogInformation($"Archive File Id: {_config.ArchiveFileId}, Archived File Id: {archivedFileId} about to be sent");
-
-                var status = _adaptationRequestSender.Send(archivedFileId, originalFilePath, rebuiltPath, _cancellationTokenSource.Token);
-
-                _logger.LogInformation($"Archive File Id: {_config.ArchiveFileId}, Archived File Id: {archivedFileId}, status: {status}");
-
-                if (status == AdaptationOutcome.Replace)
-                {
-                    _archiveManager.AddToArchive(_config.OutputPath, rebuiltPath, fileMappings[archivedFileId]);
-                }
-                else if (status == AdaptationOutcome.Unmodified)
-                {
-                    _archiveManager.AddToArchive(_config.OutputPath, originalFilePath, fileMappings[archivedFileId]);
-                }
-            }
+            SendMessages().Wait();
+            ConsumeResponses(fileMappings).Wait();
 
             _adaptationOutcomeSender.Send(FileOutcome.Replace, _config.ArchiveFileId, _config.ReplyTo);
             ClearSourceStore(_tmpOriginalDirectory);
             ClearRebuiltStore(_tmpRebuiltDirectory);
 
             return Task.CompletedTask;
+        }
+
+        private Task ConsumeResponses(IDictionary<string, string> fileMappings)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                while (!_adaptationRequestSender.ResponseQueue.IsCompleted)
+                {
+                    var response = _adaptationRequestSender.ResponseQueue.Take();
+
+                    _logger.LogInformation($"Archive File Id: {_config.ArchiveFileId}, Archived File Id: {response.Key}, status: {response.Value}");
+
+                    if (response.Value == AdaptationOutcome.Replace)
+                    {
+                        _archiveManager.AddToArchive(_config.OutputPath, $"{_tmpRebuiltDirectory}/{response.Key}", fileMappings[response.Key.ToString()]);
+                    }
+                    else if (response.Value == AdaptationOutcome.Unmodified)
+                    {
+                        _archiveManager.AddToArchive(_config.OutputPath, $"{_tmpOriginalDirectory}/{response.Key}", fileMappings[response.Key.ToString()]);
+                    }
+                }
+            });
+        }
+
+        private Task SendMessages()
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                foreach (var originalFilePath in _fileManager.GetFiles(_tmpOriginalDirectory))
+                {
+                    var archivedFileId = Path.GetFileName(originalFilePath);
+                    var rebuiltPath = $"{_tmpRebuiltDirectory}/{archivedFileId}";
+
+                    _logger.LogInformation($"Archive File Id: {_config.ArchiveFileId}, Archived File Id: {archivedFileId} about to be sent");
+
+                    _adaptationRequestSender.Send(archivedFileId, originalFilePath, rebuiltPath, _cancellationTokenSource.Token);
+                }
+
+                _adaptationRequestSender.ResponseQueue.CompleteAdding();
+            });
         }
 
         private void ClearRebuiltStore(string tempDirectory)
