@@ -4,6 +4,7 @@ using Moq;
 using NUnit.Framework;
 using Service.Configuration;
 using Service.Enums;
+using Service.Interfaces;
 using Service.Messaging;
 using System;
 using System.Collections.Concurrent;
@@ -115,19 +116,6 @@ namespace Service.Tests
                 _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>())).Returns(fileMappings);
 
                 var respQueue = new Mock<IProducerConsumerCollection<KeyValuePair<Guid, AdaptationOutcome>>>();
-
-                _mockAdaptationRequestSender.SetupGet(s => s.ResponseQueue).Returns(new BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>>(respQueue.Object));
-
-                respQueue.SetupSequence(s => s.TryTake())
-                    .Returns(new KeyValuePair<Guid, AdaptationOutcome>(fileOneId, AdaptationOutcome.Replace))
-                    .Returns(new KeyValuePair<Guid, AdaptationOutcome>(fileTwoId, AdaptationOutcome.Replace))
-                    .Returns(new KeyValuePair<Guid, AdaptationOutcome>(fileThreeId, AdaptationOutcome.Replace));
-
-                respQueue.SetupSequence(s => s.)
-                    .Returns(false)
-                    .Returns(false)
-                    .Returns(false)
-                    .Returns(true);
 
                 _mockFileManager.Setup(s => s.GetFiles(It.IsAny<string>()))
                     .Returns(files);

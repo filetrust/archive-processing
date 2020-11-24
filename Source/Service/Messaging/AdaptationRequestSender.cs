@@ -4,8 +4,8 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Service.Configuration;
 using Service.Enums;
+using Service.Interfaces;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
@@ -17,7 +17,9 @@ namespace Service.Messaging
         private bool disposedValue;
 
         private readonly IResponseProcessor _responseProcessor;
+        private readonly IAdaptationResponseCollection _collection;
         private readonly ILogger<AdaptationRequestSender> _logger;
+
         private readonly IModel _channel;
         private readonly IConnection _connection;
         private readonly EventingBasicConsumer _consumer;
@@ -25,11 +27,10 @@ namespace Service.Messaging
         private int _sentMessageCount = 0;
         private int _receivedMessageCount = 0;
 
-        public BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>> ResponseQueue { get; } = new BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>>();
-
-        public AdaptationRequestSender(IResponseProcessor responseProcessor, ILogger<AdaptationRequestSender> logger, IArchiveProcessorConfig config)
+        public AdaptationRequestSender(IResponseProcessor responseProcessor, IAdaptationResponseCollection collection, ILogger<AdaptationRequestSender> logger, IArchiveProcessorConfig config)
         {
             _responseProcessor = responseProcessor ?? throw new ArgumentNullException(nameof(responseProcessor));
+            _collection = collection ?? throw new ArgumentNullException(nameof(collection));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             if (config == null) throw new ArgumentNullException(nameof(config));
@@ -59,16 +60,16 @@ namespace Service.Messaging
 
                     var response = _responseProcessor.Process(headers);
 
-                    ResponseQueue.Add(response);
+                    _collection.Add(response);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"Error Processing 'input'");
-                    ResponseQueue.Add(new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error));
+                    _collection.Add(new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error));
                 }
 
                 if (_receivedMessageCount == _sentMessageCount)
-                    ResponseQueue.CompleteAdding();
+                    _collection.CompleteAdding();
             };
 
             _logger.LogInformation($"AdaptationRequestSender Connection established to {config.AdaptationRequestQueueHostname}");
