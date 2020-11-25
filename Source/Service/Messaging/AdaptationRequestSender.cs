@@ -24,8 +24,9 @@ namespace Service.Messaging
         private readonly IConnection _connection;
         private readonly EventingBasicConsumer _consumer;
 
-        private int _sentMessageCount = 0;
         private int _receivedMessageCount = 0;
+
+        public int ExpectedMessageCount { get; set; }
 
         public AdaptationRequestSender(IResponseProcessor responseProcessor, IAdaptationResponseCollection collection, ILogger<AdaptationRequestSender> logger, IArchiveProcessorConfig config)
         {
@@ -68,7 +69,7 @@ namespace Service.Messaging
                     _collection.Add(new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error));
                 }
 
-                if (_receivedMessageCount == _sentMessageCount)
+                if (_receivedMessageCount == ExpectedMessageCount)
                     _collection.CompleteAdding();
             };
 
@@ -119,8 +120,6 @@ namespace Service.Messaging
                                  routingKey: "adaptation-request",
                                  basicProperties: messageProperties,
                                  body: body);
-
-            _sentMessageCount++;
         }
     }
 }

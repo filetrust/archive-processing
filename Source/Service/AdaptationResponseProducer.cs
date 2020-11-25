@@ -28,7 +28,12 @@ namespace Service
         {
             return Task.Factory.StartNew(() =>
             {
-                Parallel.ForEach(_fileManager.GetFiles(originalDirectory), (originalFilePath) => {
+                var files = _fileManager.GetFiles(originalDirectory);
+
+                _adaptationRequestSender.ExpectedMessageCount = files.Length;
+                _logger.LogInformation($"Archive File Id: {_config.ArchiveFileId}, set ExpectedMessageCount to {files.Length}");
+
+                Parallel.ForEach(files, (originalFilePath) => {
                     var archivedFileId = Path.GetFileName(originalFilePath);
                     var rebuiltPath = $"{rebuiltDirectory}/{archivedFileId}";
 
