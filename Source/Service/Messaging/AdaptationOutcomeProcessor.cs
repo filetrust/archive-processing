@@ -17,7 +17,7 @@ namespace Service.Messaging
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public AdaptationOutcome Process(IDictionary<string, object> headers)
+        public KeyValuePair<Guid, AdaptationOutcome> Process(IDictionary<string, object> headers)
         {
             try
             {
@@ -36,22 +36,23 @@ namespace Service.Messaging
 
                 var outcomeString = Encoding.UTF8.GetString((byte[])headers["file-outcome"]);
                 AdaptationOutcome outcome = (AdaptationOutcome)Enum.Parse(typeof(AdaptationOutcome), outcomeString, ignoreCase: true);
-                return outcome;
+
+                return new KeyValuePair<Guid, AdaptationOutcome>(fileId, outcome);
             }
             catch (ArgumentException aex)
             {
                 _logger.LogError($"Unrecognised enumeration processing adaptation outcome {aex.Message}");
-                return AdaptationOutcome.Error;
+                return new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error);
             }
             catch (JsonReaderException jre)
             {
                 _logger.LogError($"Poorly formated adaptation outcome : {jre.Message}");
-                return AdaptationOutcome.Error;
+                return new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error);
             }
             catch (AdaptationServiceClientException asce)
             {
                 _logger.LogError($"Poorly formated adaptation outcome : {asce.Message}");
-                return AdaptationOutcome.Error;
+                return new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error);
             }
         }
     }

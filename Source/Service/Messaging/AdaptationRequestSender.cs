@@ -4,30 +4,34 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Service.Configuration;
 using Service.Enums;
+using Service.Interfaces;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 
 namespace Service.Messaging
 {
-    public class AdaptationRequestSender : IAdaptationRequestSender
+    public class AdaptationRequestSender : IAdaptationRequestSender, IDisposable
     {
         private bool disposedValue;
 
         private readonly IResponseProcessor _responseProcessor;
+        private readonly IAdaptationResponseCollection _collection;
         private readonly ILogger<AdaptationRequestSender> _logger;
-
-        private readonly BlockingCollection<AdaptationOutcome> _respQueue = new BlockingCollection<AdaptationOutcome>();
 
         private readonly IModel _channel;
         private readonly IConnection _connection;
         private readonly EventingBasicConsumer _consumer;
-        
-        public AdaptationRequestSender(IResponseProcessor responseProcessor, ILogger<AdaptationRequestSender> logger, IArchiveProcessorConfig config)
+
+        private int _receivedMessageCount = 0;
+
+        public int ExpectedMessageCount { get; set; }
+
+        public AdaptationRequestSender(IResponseProcessor responseProcessor, IAdaptationResponseCollection collection, ILogger<AdaptationRequestSender> logger, IArchiveProcessorConfig config)
         {
             _responseProcessor = responseProcessor ?? throw new ArgumentNullException(nameof(responseProcessor));
+            _collection = collection ?? throw new ArgumentNullException(nameof(collection));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             if (config == null) throw new ArgumentNullException(nameof(config));
@@ -50,19 +54,23 @@ namespace Service.Messaging
             {
                 try
                 {
+                    _receivedMessageCount++;
                     _logger.LogInformation($"Received message: Exchange Name: '{ea.Exchange}', Routing Key: '{ea.RoutingKey}'");
                     var headers = ea.BasicProperties.Headers;
                     var body = ea.Body.ToArray();
 
                     var response = _responseProcessor.Process(headers);
 
-                    _respQueue.Add(response);
+                    _collection.Add(response);
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, $"Error Processing 'input'");
-                    _respQueue.Add(AdaptationOutcome.Error);
+                    _collection.Add(new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error));
                 }
+
+                if (_receivedMessageCount == ExpectedMessageCount)
+                    _collection.CompleteAdding();
             };
 
             _logger.LogInformation($"AdaptationRequestSender Connection established to {config.AdaptationRequestQueueHostname}");
@@ -89,7 +97,7 @@ namespace Service.Messaging
             GC.SuppressFinalize(this);
         }
 
-        public AdaptationOutcome Send(string fileId, string originalStoreFilePath, string rebuiltStoreFilePath, CancellationToken processingCancellationToken)
+        public void Send(string fileId, string originalStoreFilePath, string rebuiltStoreFilePath, CancellationToken processingCancellationToken)
         {
             IDictionary<string, object> headerMap = new Dictionary<string, object>
             {
@@ -112,8 +120,6 @@ namespace Service.Messaging
                                  routingKey: "adaptation-request",
                                  basicProperties: messageProperties,
                                  body: body);
-
-            return _respQueue.Take(processingCancellationToken);
         }
     }
 }

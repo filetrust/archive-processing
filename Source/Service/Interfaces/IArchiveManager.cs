@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Service
+namespace Service.Interfaces
 {
     public interface IArchiveManager
     {

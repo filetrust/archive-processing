@@ -1,10 +1,10 @@
-﻿using Service.Enums;
-using System.Threading;
+﻿using System.Threading;
 
 namespace Service.Messaging
 {
     public interface IAdaptationRequestSender
     {
-        AdaptationOutcome Send(string fileId, string originalStoreFilePath, string rebuiltStoreFilePath, CancellationToken processingCancellationToken);
+        int ExpectedMessageCount { set; }
+        void Send(string fileId, string originalStoreFilePath, string rebuiltStoreFilePath, CancellationToken processingCancellationToken);
     }
 }
