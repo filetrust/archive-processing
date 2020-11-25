@@ -12,7 +12,7 @@ using System.Threading;
 
 namespace Service.Messaging
 {
-    public class AdaptationRequestSender : IAdaptationRequestSender
+    public class AdaptationRequestSender : IAdaptationRequestSender, IDisposable
     {
         private bool disposedValue;
 
