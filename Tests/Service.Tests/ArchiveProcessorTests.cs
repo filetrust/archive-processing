@@ -3,8 +3,11 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
 using NUnit.Framework;
 using Service.Configuration;
+using Service.Enums;
+using Service.Interfaces;
 using Service.Messaging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,9 +20,10 @@ namespace Service.Tests
         public class ProcessMethod : ArchiveProcessorTests
         {
             private Mock<IAdaptationOutcomeSender> _mockAdaptationOutcomeSender;
-            private Mock<IAdaptationRequestSender> _mockAdaptationRequestSender;
             private Mock<IFileManager> _mockFileManager;
             private Mock<IArchiveManager> _mockArchiveManager;
+            private Mock<IAdaptationResponseProducer> _mockAdaptationResponseProducer;
+            private Mock<IAdaptationResponseConsumer> _mockAdaptationResponseConsumer;
             private Mock<IArchiveProcessorConfig> _mockConfig;
             private Mock<ILogger<ArchiveProcessor>> _mockLogger;
 
@@ -29,9 +33,10 @@ namespace Service.Tests
             public void SetUp()
             {
                 _mockAdaptationOutcomeSender = new Mock<IAdaptationOutcomeSender>();
-                _mockAdaptationRequestSender = new Mock<IAdaptationRequestSender>();
                 _mockFileManager = new Mock<IFileManager>();
                 _mockArchiveManager = new Mock<IArchiveManager>();
+                _mockAdaptationResponseProducer = new Mock<IAdaptationResponseProducer>();
+                _mockAdaptationResponseConsumer = new Mock<IAdaptationResponseConsumer>();
                 _mockConfig = new Mock<IArchiveProcessorConfig>();
                 _mockLogger = new Mock<ILogger<ArchiveProcessor>>();
 
@@ -40,9 +45,10 @@ namespace Service.Tests
 
                 _archiveProcessor = new ArchiveProcessor(
                     _mockAdaptationOutcomeSender.Object,
-                    _mockAdaptationRequestSender.Object,
                     _mockFileManager.Object,
                     _mockArchiveManager.Object,
+                    _mockAdaptationResponseProducer.Object,
+                    _mockAdaptationResponseConsumer.Object,
                     _mockConfig.Object,
                     _mockLogger.Object);
             }
@@ -77,7 +83,7 @@ namespace Service.Tests
             }
 
             [Test]
-            public void FilesAreExtractedAndRebuilt_And_ReplaceIsSent_When_FileExists()
+            public void FilesAreExtracted_And_ReplaceIsSent_When_FileExists()
             {
                 // Arrange
                 const string expectedReplyTo = "reply-to-me";
@@ -88,9 +94,9 @@ namespace Service.Tests
                 var expectedRebuiltTmpFolder = $"{expectedOutput}_tmp";
                 var expectedFileId = Guid.NewGuid().ToString();
 
-                var fileOneId = Guid.NewGuid().ToString();
-                var fileTwoId = Guid.NewGuid().ToString();
-                var fileThreeId = Guid.NewGuid().ToString();
+                var fileOneId = Guid.NewGuid();
+                var fileTwoId = Guid.NewGuid();
+                var fileThreeId = Guid.NewGuid();
 
                 var filePathOne = $"{expectedOriginalTmpFolder}/{fileOneId}";
                 var filePathTwo = $"{expectedOriginalTmpFolder}/{fileTwoId}";
@@ -100,9 +106,9 @@ namespace Service.Tests
 
                 var fileMappings = new Dictionary<string, string>()
                 {
-                    { fileOneId, "FileOne" },
-                    { fileTwoId, "FileTwo" },
-                    { fileThreeId, "FileThree" },
+                    { fileOneId.ToString(), "FileOne" },
+                    { fileTwoId.ToString(), "FileTwo" },
+                    { fileThreeId.ToString(), "FileThree" },
                 };
 
                 _mockConfig.SetupGet(s => s.ArchiveFileId).Returns(expectedFileId);
@@ -111,6 +117,8 @@ namespace Service.Tests
                 _mockConfig.SetupGet(s => s.OutputPath).Returns(expectedOutput);
                 _mockFileManager.Setup(s => s.FileExists(It.IsAny<string>())).Returns(true);
                 _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>())).Returns(fileMappings);
+
+                var respQueue = new Mock<IProducerConsumerCollection<KeyValuePair<Guid, AdaptationOutcome>>>();
 
                 _mockFileManager.Setup(s => s.GetFiles(It.IsAny<string>()))
                     .Returns(files);
@@ -126,12 +134,6 @@ namespace Service.Tests
                 _mockArchiveManager.Verify(s => s.CreateArchive(
                     It.Is<string>(input => input == expectedRebuiltTmpFolder),
                     It.Is<string>(archive => archive == expectedOutput)));
-
-                _mockAdaptationRequestSender.Verify(s => s.Send(
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<string>(),
-                    It.IsAny<CancellationToken>()), Times.Exactly(files.Length));
 
                 _mockAdaptationOutcomeSender.Verify(s => s.Send(
                     It.Is<string>(status => status == FileOutcome.Replace),

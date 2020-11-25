@@ -1,10 +1,11 @@
 ﻿using Service.Enums;
+using System;
 using System.Collections.Generic;
 
 namespace Service.Messaging
 {
     public interface IResponseProcessor
     {
-        AdaptationOutcome Process(IDictionary<string, object> headers);
+        KeyValuePair<Guid, AdaptationOutcome> Process(IDictionary<string, object> headers);
     }
 }

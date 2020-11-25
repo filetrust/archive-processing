@@ -1,4 +1,4 @@
-﻿namespace Service
+﻿namespace Service.Interfaces
 {
     public interface IArchiveProcessor
     {

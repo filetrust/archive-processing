@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Service.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.IO.Compression;
 

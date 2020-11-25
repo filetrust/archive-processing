@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Service.Configuration;
+using Service.Interfaces;
 using Service.Messaging;
 
 namespace Service
@@ -44,6 +45,9 @@ namespace Service
             services.AddTransient<IArchiveProcessor, ArchiveProcessor>();
             services.AddTransient<IArchiveManager, ZipArchiveManager>();
             services.AddTransient<IFileManager, LocalFileManager>();
+            services.AddScoped<IAdaptationResponseCollection, AdaptationResponseCollection>();
+            services.AddTransient<IAdaptationResponseConsumer, AdaptationResponseConsumer>();
+            services.AddScoped<IAdaptationResponseProducer, AdaptationResponseProducer>();
             services.AddSingleton<IArchiveProcessorConfig>(Config);
         }
     }
