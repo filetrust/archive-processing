@@ -93,10 +93,10 @@ namespace Service
             _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive in temp folder {_tmpRebuiltDirectory}");
             _archiveManager.CreateArchive(_tmpRebuiltDirectory, _config.OutputPath);
 
-            var consumerTask = _responseConsumer.ConsumeResponses(fileMappings, _tmpRebuiltDirectory, _tmpOriginalDirectory, _cancellationTokenSource.Token);
             var senderTask = _responseProducer.SendMessages(_tmpOriginalDirectory, _tmpRebuiltDirectory, _cancellationTokenSource.Token);
+            var consumerTask = _responseConsumer.ConsumeResponses(fileMappings, _tmpRebuiltDirectory, _tmpOriginalDirectory, _cancellationTokenSource.Token);
 
-            Task.WaitAll(consumerTask, senderTask);
+            Task.WaitAll(senderTask, consumerTask);
 
             _adaptationOutcomeSender.Send(FileOutcome.Replace, _config.ArchiveFileId, _config.ReplyTo);
             ClearSourceStore(_tmpOriginalDirectory);
