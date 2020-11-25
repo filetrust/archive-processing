@@ -28,8 +28,12 @@ namespace Service
             {
                 foreach (var entry in archive.Entries)
                 {
+                    // Entry is a folder within the archive, don't create mapping and extract.
+                    if (entry.FullName.EndsWith("/"))
+                        continue;
+
                     var fileId = Guid.NewGuid().ToString();
-                    fileMapping.Add(fileId, entry.Name);
+                    fileMapping.Add(fileId, entry.FullName);
                     entry.ExtractToFile($"{targetPath}/{fileId}");
                 }
             }
