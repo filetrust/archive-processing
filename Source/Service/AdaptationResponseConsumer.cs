@@ -13,6 +13,8 @@ namespace Service
 {
     public class AdaptationResponseConsumer : IAdaptationResponseConsumer
     {
+        private const string ErrorReportFileName = "ErrorReport.html";
+
         private readonly IAdaptationResponseCollection _collection;
         private readonly IArchiveManager _archiveManager;
         private readonly IErrorReportGenerator _errorReportGenerator;
@@ -59,8 +61,8 @@ namespace Service
 
                 if (errorReport != null)
                 {
-                    _fileManager.WriteFile($"{rebuiltDir}/ErrorReport.html", Encoding.UTF8.GetBytes(errorReport));
-                    _archiveManager.AddToArchive(_config.OutputPath, $"{rebuiltDir}/ErrorReport.html", "ErrorReport.html");
+                    _fileManager.WriteFile($"{rebuiltDir}/{ErrorReportFileName}", Encoding.UTF8.GetBytes(errorReport));
+                    _archiveManager.AddToArchive(_config.OutputPath, $"{rebuiltDir}/{ErrorReportFileName}", ErrorReportFileName);
                 }
             });
         }

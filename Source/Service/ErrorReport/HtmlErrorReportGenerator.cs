@@ -7,8 +7,6 @@ namespace Service.ErrorReport
     {
         private string _report;
 
-        public string ErrorReport { get; set; }
-        
         public HtmlErrorReportGenerator()
         {
             using(var reader = File.OpenText("Templates/ArchiveErrorReportTemplate.html"))
