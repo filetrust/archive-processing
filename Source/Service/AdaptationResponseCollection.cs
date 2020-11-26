@@ -23,9 +23,9 @@ namespace Service
             _collection.CompleteAdding();
         }
 
-        public KeyValuePair<Guid, AdaptationOutcome> Take(CancellationToken token)
+        public bool TryTake(out KeyValuePair<Guid, AdaptationOutcome> outcome, CancellationToken token)
         {
-            return _collection.Take(token);
+            return _collection.TryTake(out outcome, Timeout.Infinite, token);
         }
     }
 }

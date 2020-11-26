@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Service.Configuration;
+using Service.ErrorReport;
 using Service.Interfaces;
 using Service.Messaging;
 
@@ -48,6 +49,7 @@ namespace Service
             services.AddScoped<IAdaptationResponseCollection, AdaptationResponseCollection>();
             services.AddTransient<IAdaptationResponseConsumer, AdaptationResponseConsumer>();
             services.AddScoped<IAdaptationResponseProducer, AdaptationResponseProducer>();
+            services.AddTransient<IErrorReportGenerator, HtmlErrorReportGenerator>();
             services.AddSingleton<IArchiveProcessorConfig>(Config);
         }
     }

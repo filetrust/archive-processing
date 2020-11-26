@@ -10,6 +10,6 @@ namespace Service.Interfaces
         bool IsCompleted { get; }
         void Add(KeyValuePair<Guid, AdaptationOutcome> response);
         void CompleteAdding();
-        KeyValuePair<Guid, AdaptationOutcome> Take(CancellationToken token);
+        bool TryTake(out KeyValuePair<Guid, AdaptationOutcome> outcome, CancellationToken token);
     }
 }
