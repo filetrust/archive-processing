@@ -20,9 +20,9 @@ namespace Service
             ZipFile.CreateFromDirectory(sourceFolderPath, archiveFilePath);
         }
 
-        public IDictionary<string, string> ExtractArchive(string archiveFilePath, string targetPath)
+        public IDictionary<Guid, string> ExtractArchive(string archiveFilePath, string targetPath)
         {
-            var fileMapping = new Dictionary<string, string>();
+            var fileMapping = new Dictionary<Guid, string>();
 
             using (var archive = ZipFile.OpenRead(archiveFilePath))
             {
@@ -32,7 +32,7 @@ namespace Service
                     if (entry.FullName.EndsWith("/"))
                         continue;
 
-                    var fileId = Guid.NewGuid().ToString();
+                    var fileId = Guid.NewGuid();
                     fileMapping.Add(fileId, entry.FullName);
                     entry.ExtractToFile($"{targetPath}/{fileId}");
                 }

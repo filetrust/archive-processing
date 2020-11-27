@@ -3,6 +3,7 @@ using Service.Configuration;
 using Service.Interfaces;
 using Service.Messaging;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
@@ -92,6 +93,8 @@ namespace Service
 
             _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive in temp folder {_tmpRebuiltDirectory}");
             _archiveManager.CreateArchive(_tmpRebuiltDirectory, _config.OutputPath);
+
+            _responseConsumer.SetPendingFiles(new List<Guid>(fileMappings.Keys));
 
             var senderTask = _responseProducer.SendMessages(_tmpOriginalDirectory, _tmpRebuiltDirectory, _cancellationTokenSource.Token);
             var consumerTask = _responseConsumer.ConsumeResponses(fileMappings, _tmpRebuiltDirectory, _tmpOriginalDirectory, _cancellationTokenSource.Token);

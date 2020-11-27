@@ -11,8 +11,6 @@ namespace Service
     {
         private BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>> _collection = new BlockingCollection<KeyValuePair<Guid, AdaptationOutcome>>();
 
-        public bool IsCompleted => _collection.IsCompleted;
-
         public void Add(KeyValuePair<Guid, AdaptationOutcome> response)
         {
             _collection.Add(response);
@@ -23,9 +21,9 @@ namespace Service
             _collection.CompleteAdding();
         }
 
-        public bool TryTake(out KeyValuePair<Guid, AdaptationOutcome> outcome, CancellationToken token)
+        public KeyValuePair<Guid, AdaptationOutcome> Take(CancellationToken token)
         {
-            return _collection.TryTake(out outcome, Timeout.Infinite, token);
+            return _collection.Take(token);
         }
     }
 }

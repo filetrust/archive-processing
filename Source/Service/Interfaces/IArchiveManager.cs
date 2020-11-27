@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace Service.Interfaces
 {
@@ -6,6 +7,6 @@ namespace Service.Interfaces
     {
         void AddToArchive(string archiveFilePath, string sourceFilePath, string fileName);
         void CreateArchive(string sourceFolderPath, string archiveFilePath);
-        IDictionary<string, string> ExtractArchive(string archiveFilePath, string targetPath);
+        IDictionary<Guid, string> ExtractArchive(string archiveFilePath, string targetPath);
     }
 }
