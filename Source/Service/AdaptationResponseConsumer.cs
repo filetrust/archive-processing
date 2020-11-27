@@ -22,7 +22,7 @@ namespace Service
         private readonly IArchiveProcessorConfig _config;
         private readonly ILogger<AdaptationResponseConsumer> _logger;
 
-        private IList<Guid> _pendingFiles;
+        private List<Guid> _pendingFiles = new List<Guid>();
 
         public AdaptationResponseConsumer(IAdaptationResponseCollection collection, IArchiveManager archiveManager, IErrorReportGenerator errorReportGenerator, IFileManager fileManager, IArchiveProcessorConfig config, ILogger<AdaptationResponseConsumer> logger)
         {
@@ -35,9 +35,9 @@ namespace Service
         }
 
 
-        public void SetPendingFiles(IList<Guid> fileIds)
+        public void SetPendingFiles(IEnumerable<Guid> fileIds)
         {
-            _pendingFiles = fileIds;
+            _pendingFiles.AddRange(fileIds);
         }
 
         public Task ConsumeResponses(IDictionary<Guid, string> fileMappings, string rebuiltDir, string originalDir, CancellationToken token)

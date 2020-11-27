@@ -7,7 +7,7 @@ namespace Service.Interfaces
 {
     public interface IAdaptationResponseConsumer
     {
-        void SetPendingFiles(IList<Guid> fileIds);
+        void SetPendingFiles(IEnumerable<Guid> fileIds);
         Task ConsumeResponses(IDictionary<Guid, string> fileMappings, string rebuiltDir, string originalDir, CancellationToken token);
     }
 }

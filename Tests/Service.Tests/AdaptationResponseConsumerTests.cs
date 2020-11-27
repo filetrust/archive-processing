@@ -70,18 +70,16 @@ namespace Service.Tests
                 var expectedFileName = "I AM FILE NAME";
                 var expectedSource = $"{_rebuiltPath}/{expectedFileId}";
 
-                var fileMappings = new Dictionary<string, string>()
+                var fileMappings = new Dictionary<Guid, string>()
                 {
-                    { expectedFileId.ToString(),  expectedFileName}
+                    { expectedFileId,  expectedFileName}
                 };
                 
-                _mockCollection.SetupSequence(s => s.IsCompleted)
-                    .Returns(false)
-                    .Returns(true);
-
                 var outcome = new KeyValuePair<Guid, AdaptationOutcome>(expectedFileId, AdaptationOutcome.Replace);
 
-                _mockCollection.Setup(s => s.TryTake(out outcome, It.IsAny<CancellationToken>())).Returns(true);
+                _mockCollection.Setup(s => s.Take(It.IsAny<CancellationToken>())).Returns(outcome);
+
+                _adaptationResponseConsumer.SetPendingFiles(new List<Guid>(fileMappings.Keys));
 
                 // Act
                 _adaptationResponseConsumer.ConsumeResponses(fileMappings, _rebuiltPath, _originalPath, new CancellationToken()).Wait();
@@ -101,18 +99,16 @@ namespace Service.Tests
                 var expectedFileName = "I AM FILE NAME";
                 var expectedSource = $"{_originalPath}/{expectedFileId}";
 
-                var fileMappings = new Dictionary<string, string>()
+                var fileMappings = new Dictionary<Guid, string>()
                 {
-                    { expectedFileId.ToString(),  expectedFileName}
+                    { expectedFileId,  expectedFileName}
                 };
-
-                _mockCollection.SetupSequence(s => s.IsCompleted)
-                    .Returns(false)
-                    .Returns(true);
 
                 var outcome = new KeyValuePair<Guid, AdaptationOutcome>(expectedFileId, AdaptationOutcome.Unmodified);
 
-                _mockCollection.Setup(s => s.TryTake(out outcome, It.IsAny<CancellationToken>())).Returns(true);
+                _adaptationResponseConsumer.SetPendingFiles(new List<Guid>(fileMappings.Keys));
+
+                _mockCollection.Setup(s => s.Take(It.IsAny<CancellationToken>())).Returns(outcome);
 
                 // Act
                 _adaptationResponseConsumer.ConsumeResponses(fileMappings, _rebuiltPath, _originalPath, new CancellationToken()).Wait();
@@ -133,22 +129,20 @@ namespace Service.Tests
                 var expectedFileId = Guid.NewGuid();
                 var expectedSource = $"{_rebuiltPath}/{ErrorReportFileName}";
 
-                var fileMappings = new Dictionary<string, string>()
+                var fileMappings = new Dictionary<Guid, string>()
                 {
-                    { expectedFileId.ToString(),  "DoesntMatter"}
+                    { expectedFileId,  "DoesntMatter"}
                 };
-
-                _mockCollection.SetupSequence(s => s.IsCompleted)
-                    .Returns(false)
-                    .Returns(true);
 
                 _mockErrorReportGenerator.Setup(s => s.AddIdToReport(
                     It.Is<string>(id => id == $"{_archiveFileId}/{expectedFileId}")))
                     .Returns("Error Report");
 
+                _adaptationResponseConsumer.SetPendingFiles(new List<Guid>(fileMappings.Keys));
+
                 var outcome = new KeyValuePair<Guid, AdaptationOutcome>(expectedFileId, AdaptationOutcome.Failed);
 
-                _mockCollection.Setup(s => s.TryTake(out outcome, It.IsAny<CancellationToken>())).Returns(true);
+                _mockCollection.Setup(s => s.Take(It.IsAny<CancellationToken>())).Returns(outcome);
 
                 // Act
                 _adaptationResponseConsumer.ConsumeResponses(fileMappings, _rebuiltPath, _originalPath, new CancellationToken()).Wait();
@@ -161,18 +155,16 @@ namespace Service.Tests
             }
 
             [Test]
-            public void Nothing_Is_Added_To_The_Archive_When_Collection_Is_Complete()
+            public void Nothing_Is_Added_To_The_Archive_When_Pending_Is_Empty()
             {
                 // Arrange
                 var fileId = Guid.NewGuid();
                 var fileName = "I AM FILE NAME";
 
-                var fileMappings = new Dictionary<string, string>()
+                var fileMappings = new Dictionary<Guid, string>()
                 {
-                    { fileId.ToString(),  fileName}
+                    { fileId,  fileName}
                 };
-
-                _mockCollection.SetupSequence(s => s.IsCompleted).Returns(true);
 
                 // Act
                 _adaptationResponseConsumer.ConsumeResponses(fileMappings, _rebuiltPath, _originalPath, new CancellationToken()).Wait();
@@ -202,38 +194,23 @@ namespace Service.Tests
                 var expectedSourceTwo = $"{_rebuiltPath}/{expectedFileIdTwo}";
                 var expectedSourceThree = $"{_rebuiltPath}/{expectedFileIdThree}";
 
-                var fileMappings = new Dictionary<string, string>()
+                var fileMappings = new Dictionary<Guid, string>()
                 {
-                    { expectedFileIdOne.ToString(),  expectedFileNameOne},
-                    { expectedFileIdTwo.ToString(),  expectedFileNameTwo},
-                    { expectedFileIdThree.ToString(),  expectedFileNameThree}
+                    { expectedFileIdOne,  expectedFileNameOne},
+                    { expectedFileIdTwo,  expectedFileNameTwo},
+                    { expectedFileIdThree,  expectedFileNameThree}
                 };
-
-                _mockCollection.SetupSequence(s => s.IsCompleted)
-                    .Returns(false)
-                    .Returns(false)
-                    .Returns(false)
-                    .Returns(true);
 
                 var collection1 = new KeyValuePair<Guid, AdaptationOutcome>(expectedFileIdOne, AdaptationOutcome.Replace);
                 var collection2 = new KeyValuePair<Guid, AdaptationOutcome>(expectedFileIdTwo, AdaptationOutcome.Replace);
                 var collection3 = new KeyValuePair<Guid, AdaptationOutcome>(expectedFileIdThree, AdaptationOutcome.Replace);
 
-                var calls = 0;
+                _mockCollection.SetupSequence(s => s.Take(It.IsAny<CancellationToken>()))
+                    .Returns(collection1)
+                    .Returns(collection2)
+                    .Returns(collection3);
 
-                //This is horrible but the only way I have found to sequentially return different values for the out param
-                _mockCollection.Setup(s => s.TryTake(out collection1, It.IsAny<CancellationToken>()))
-                    .Callback(new CallbackDelegate((out KeyValuePair<Guid, AdaptationOutcome> outcome, CancellationToken token) =>
-                    {
-                        calls++;
-                        if (calls == 1)
-                            outcome = collection1;
-                        else if (calls == 2)
-                            outcome = collection2;
-                        else 
-                            outcome = collection3;
-                    }))
-                    .Returns(true);
+                _adaptationResponseConsumer.SetPendingFiles(new List<Guid>(fileMappings.Keys));
 
                 // Act
                 _adaptationResponseConsumer.ConsumeResponses(fileMappings, _rebuiltPath, _originalPath, new CancellationToken()).Wait();
