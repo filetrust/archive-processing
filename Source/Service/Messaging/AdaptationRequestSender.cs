@@ -60,7 +60,6 @@ namespace Service.Messaging
                     var body = ea.Body.ToArray();
 
                     var response = _responseProcessor.Process(headers);
-
                     _collection.Add(response);
                 }
                 catch (Exception ex)
@@ -68,9 +67,6 @@ namespace Service.Messaging
                     _logger.LogError(ex, $"Error Processing 'input'");
                     _collection.Add(new KeyValuePair<Guid, AdaptationOutcome>(Guid.Empty, AdaptationOutcome.Error));
                 }
-
-                if (_receivedMessageCount == ExpectedMessageCount)
-                    _collection.CompleteAdding();
             };
 
             _logger.LogInformation($"AdaptationRequestSender Connection established to {config.AdaptationRequestQueueHostname}");
