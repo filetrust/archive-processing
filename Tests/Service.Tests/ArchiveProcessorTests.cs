@@ -104,11 +104,11 @@ namespace Service.Tests
 
                 var files = new string[] { filePathOne, filePathTwo, filePathThree };
 
-                var fileMappings = new Dictionary<string, string>()
+                var fileMappings = new Dictionary<Guid, string>()
                 {
-                    { fileOneId.ToString(), "FileOne" },
-                    { fileTwoId.ToString(), "FileTwo" },
-                    { fileThreeId.ToString(), "FileThree" },
+                    { fileOneId, "FileOne" },
+                    { fileTwoId, "FileTwo" },
+                    { fileThreeId, "FileThree" },
                 };
 
                 _mockConfig.SetupGet(s => s.ArchiveFileId).Returns(expectedFileId);
