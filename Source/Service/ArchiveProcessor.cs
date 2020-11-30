@@ -1,10 +1,12 @@
 ﻿using Microsoft.Extensions.Logging;
 using Service.Configuration;
+using Service.ErrorReport;
 using Service.Interfaces;
 using Service.Messaging;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,6 +19,7 @@ namespace Service
         private readonly IArchiveManager _archiveManager;
         private readonly IAdaptationResponseProducer _responseProducer;
         private readonly IAdaptationResponseConsumer _responseConsumer;
+        private readonly IPasswordProtectedReportGenerator _passwordProtectedReportGenerator;
         private readonly IArchiveProcessorConfig _config;
         private readonly ILogger<ArchiveProcessor> _logger;
 
@@ -27,11 +30,12 @@ namespace Service
         private string _tmpRebuiltDirectory => $"{_config.OutputPath}_tmp";
 
         public ArchiveProcessor(
-            IAdaptationOutcomeSender adaptationOutcomeSender, 
+            IAdaptationOutcomeSender adaptationOutcomeSender,
             IFileManager fileManager,
-            IArchiveManager archiveManager, 
-            IAdaptationResponseProducer responseProducer, 
-            IAdaptationResponseConsumer responseConsumer, 
+            IArchiveManager archiveManager,
+            IAdaptationResponseProducer responseProducer,
+            IAdaptationResponseConsumer responseConsumer,
+            IPasswordProtectedReportGenerator passwordProtectedReportGenerator,
             IArchiveProcessorConfig config, 
             ILogger<ArchiveProcessor> logger)
         {
@@ -40,6 +44,7 @@ namespace Service
             _archiveManager = archiveManager ?? throw new ArgumentNullException(nameof(archiveManager));
             _responseProducer = responseProducer ?? throw new ArgumentNullException(nameof(responseProducer));
             _responseConsumer = responseConsumer ?? throw new ArgumentNullException(nameof(responseConsumer));
+            _passwordProtectedReportGenerator = passwordProtectedReportGenerator ?? throw new ArgumentNullException(nameof(passwordProtectedReportGenerator));
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -91,15 +96,24 @@ namespace Service
             _logger.LogInformation($"File Id: {_config.ArchiveFileId} Extracting archive to temp folder {_tmpOriginalDirectory}");
             var fileMappings = _archiveManager.ExtractArchive(_config.InputPath, _tmpOriginalDirectory);
 
-            _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive in temp folder {_tmpRebuiltDirectory}");
-            _archiveManager.CreateArchive(_tmpRebuiltDirectory, _config.OutputPath);
+            if (fileMappings == null)
+            {
+                _logger.LogWarning($"File Id: {_config.ArchiveFileId} Password Protected received");
+                var report = _passwordProtectedReportGenerator.CreateReport(_config.ArchiveFileId);
+                _fileManager.WriteFile(_config.OutputPath, Encoding.UTF8.GetBytes(report));
+            }
+            else
+            {
+                _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive in temp folder {_tmpRebuiltDirectory}");
+                _archiveManager.CreateArchive(_tmpRebuiltDirectory, _config.OutputPath);
+                
+                _responseConsumer.SetPendingFiles(new List<Guid>(fileMappings.Keys));
 
-            _responseConsumer.SetPendingFiles(new List<Guid>(fileMappings.Keys));
+                var senderTask = _responseProducer.SendMessages(_tmpOriginalDirectory, _tmpRebuiltDirectory, _cancellationTokenSource.Token);
+                var consumerTask = _responseConsumer.ConsumeResponses(fileMappings, _tmpRebuiltDirectory, _tmpOriginalDirectory, _cancellationTokenSource.Token);
 
-            var senderTask = _responseProducer.SendMessages(_tmpOriginalDirectory, _tmpRebuiltDirectory, _cancellationTokenSource.Token);
-            var consumerTask = _responseConsumer.ConsumeResponses(fileMappings, _tmpRebuiltDirectory, _tmpOriginalDirectory, _cancellationTokenSource.Token);
-
-            Task.WaitAll(senderTask, consumerTask);
+                Task.WaitAll(senderTask, consumerTask);
+            }
 
             _adaptationOutcomeSender.Send(FileOutcome.Replace, _config.ArchiveFileId, _config.ReplyTo);
             ClearSourceStore(_tmpOriginalDirectory);

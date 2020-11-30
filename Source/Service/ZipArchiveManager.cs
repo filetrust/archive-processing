@@ -1,4 +1,5 @@
-﻿using Service.Interfaces;
+﻿using Microsoft.Extensions.Logging;
+using Service.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.IO.Compression;
@@ -7,6 +8,13 @@ namespace Service
 {
     public class ZipArchiveManager : IArchiveManager
     {
+        private readonly ILogger<ZipArchiveManager> _logger;
+
+        public ZipArchiveManager(ILogger<ZipArchiveManager> logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
         public void AddToArchive(string archiveFilePath, string sourceFilePath, string fileName)
         {
             using (var archive = ZipFile.Open(archiveFilePath, ZipArchiveMode.Update))
@@ -22,23 +30,31 @@ namespace Service
 
         public IDictionary<Guid, string> ExtractArchive(string archiveFilePath, string targetPath)
         {
-            var fileMapping = new Dictionary<Guid, string>();
-
-            using (var archive = ZipFile.OpenRead(archiveFilePath))
+            try
             {
-                foreach (var entry in archive.Entries)
+                var fileMapping = new Dictionary<Guid, string>();
+
+                using (var archive = ZipFile.OpenRead(archiveFilePath))
                 {
-                    // Entry is a folder within the archive, don't create mapping and extract.
-                    if (entry.FullName.EndsWith("/"))
-                        continue;
+                    foreach (var entry in archive.Entries)
+                    {
+                        // Entry is a folder within the archive, don't create mapping and extract.
+                        if (entry.FullName.EndsWith("/"))
+                            continue;
 
-                    var fileId = Guid.NewGuid();
-                    fileMapping.Add(fileId, entry.FullName);
-                    entry.ExtractToFile($"{targetPath}/{fileId}");
+                        var fileId = Guid.NewGuid();
+                        fileMapping.Add(fileId, entry.FullName);
+                        entry.ExtractToFile($"{targetPath}/{fileId}");
+                    }
                 }
-            }
 
-            return fileMapping;
+                return fileMapping;
+            }
+            catch(Exception e)
+            {
+                _logger.LogError($"Archive File Path: {archiveFilePath}, error extracting archive. {e.Message}");
+                return null;
+            }
         }
     }
 }

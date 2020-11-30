@@ -4,11 +4,14 @@ using Moq;
 using NUnit.Framework;
 using Service.Configuration;
 using Service.Enums;
+using Service.ErrorReport;
 using Service.Interfaces;
 using Service.Messaging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,6 +27,7 @@ namespace Service.Tests
             private Mock<IArchiveManager> _mockArchiveManager;
             private Mock<IAdaptationResponseProducer> _mockAdaptationResponseProducer;
             private Mock<IAdaptationResponseConsumer> _mockAdaptationResponseConsumer;
+            private Mock<IPasswordProtectedReportGenerator> _mockPasswordProtectedReportGenerator;
             private Mock<IArchiveProcessorConfig> _mockConfig;
             private Mock<ILogger<ArchiveProcessor>> _mockLogger;
 
@@ -37,6 +41,7 @@ namespace Service.Tests
                 _mockArchiveManager = new Mock<IArchiveManager>();
                 _mockAdaptationResponseProducer = new Mock<IAdaptationResponseProducer>();
                 _mockAdaptationResponseConsumer = new Mock<IAdaptationResponseConsumer>();
+                _mockPasswordProtectedReportGenerator = new Mock<IPasswordProtectedReportGenerator>();
                 _mockConfig = new Mock<IArchiveProcessorConfig>();
                 _mockLogger = new Mock<ILogger<ArchiveProcessor>>();
 
@@ -49,6 +54,7 @@ namespace Service.Tests
                     _mockArchiveManager.Object,
                     _mockAdaptationResponseProducer.Object,
                     _mockAdaptationResponseConsumer.Object,
+                    _mockPasswordProtectedReportGenerator.Object,
                     _mockConfig.Object,
                     _mockLogger.Object);
             }
@@ -80,6 +86,41 @@ namespace Service.Tests
                     It.Is<string>(status => status == FileOutcome.Error),
                     It.Is<string>(fileId => fileId == expectedFileId),
                     It.Is<string>(replyTo => replyTo == expectedReplyTo)));
+            }
+
+            [Test]
+            public void ErrorReport_Is_Created_When_Archive_Is_Password_Protected()
+            {
+                // Arrange
+                const string expectedReplyTo = "reply-to-me";
+                const string expectedInput = "Folder-To-Process";
+                const string expectedOutput = "Folder-To-Place";
+
+                var expectedFileId = Guid.NewGuid().ToString();
+
+                var expectedReport = "Error Report: Password Protected Archive";
+                var expectedReportBytes = Encoding.UTF8.GetBytes(expectedReport);
+
+                _mockConfig.SetupGet(s => s.ArchiveFileId).Returns(expectedFileId);
+                _mockConfig.SetupGet(s => s.ReplyTo).Returns(expectedReplyTo);
+                _mockConfig.SetupGet(s => s.InputPath).Returns(expectedInput);
+                _mockConfig.SetupGet(s => s.OutputPath).Returns(expectedOutput);
+                _mockFileManager.Setup(s => s.FileExists(It.IsAny<string>())).Returns(true);
+                _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>())).Returns((IDictionary<Guid, string>)null);
+                _mockPasswordProtectedReportGenerator.Setup(s => s.CreateReport(It.IsAny<string>())).Returns(expectedReport);
+
+                var respQueue = new Mock<IProducerConsumerCollection<KeyValuePair<Guid, AdaptationOutcome>>>();
+
+                // Act
+                _archiveProcessor.Process();
+
+                // Assert
+                _mockPasswordProtectedReportGenerator.Verify(s => s.CreateReport(
+                    It.Is<string>(id => id == expectedFileId)));
+
+                _mockFileManager.Verify(s => s.WriteFile(
+                    It.Is<string>(output => output == expectedOutput),
+                    It.Is<byte[]>(report => report.Where((b, i) => b == expectedReportBytes[i]).Count() == expectedReportBytes.Length)));
             }
 
             [Test]

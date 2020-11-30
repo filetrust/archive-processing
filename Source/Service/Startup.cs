@@ -50,6 +50,7 @@ namespace Service
             services.AddTransient<IAdaptationResponseConsumer, AdaptationResponseConsumer>();
             services.AddScoped<IAdaptationResponseProducer, AdaptationResponseProducer>();
             services.AddTransient<IErrorReportGenerator, HtmlErrorReportGenerator>();
+            services.AddTransient<IPasswordProtectedReportGenerator, HtmlPasswordProtectedErrorReportGenerator>();
             services.AddSingleton<IArchiveProcessorConfig>(Config);
         }
     }
