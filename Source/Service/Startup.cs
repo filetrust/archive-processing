@@ -26,12 +26,12 @@ namespace Service
 
             builder.Bind(Config);
 
-            if (String.IsNullOrEmpty(Config.MessageBrokerUser))
+            if (string.IsNullOrEmpty(Config.MessageBrokerUser))
             {
                 Config.MessageBrokerUser = "guest";
             }
 
-            if (String.IsNullOrEmpty(Config.MessageBrokerPassword))
+            if (string.IsNullOrEmpty(Config.MessageBrokerPassword))
             {
                 Config.MessageBrokerPassword = "guest";
             }
