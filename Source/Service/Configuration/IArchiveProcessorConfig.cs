@@ -13,5 +13,7 @@ namespace Service.Configuration
         string MessageBrokerPassword { get; }
         string AdaptationRequestQueueHostname { get; }
         int AdaptationRequestQueuePort { get; }
+        string ArchiveErrorReportMessage { get; }
+        string ArchivePasswordProtectedReportMessage { get; }
     }
 }
