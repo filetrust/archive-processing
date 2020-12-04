@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Service.Exceptions;
 using Service.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -30,10 +31,10 @@ namespace Service.Archive
 
         public IDictionary<Guid, string> ExtractArchive(string archiveFilePath, string targetPath)
         {
-            var fileMapping = new Dictionary<Guid, string>();
-
             try
             {
+                var fileMapping = new Dictionary<Guid, string>();
+
                 using (var archive = ZipFile.OpenRead(archiveFilePath))
                 {
                     foreach (var entry in archive.Entries)
@@ -47,13 +48,14 @@ namespace Service.Archive
                         entry.ExtractToFile($"{targetPath}/{fileId}");
                     }
                 }
+
+                return fileMapping;
             }
             catch(Exception e)
             {
                 _logger.LogError($"Archive File Path: {archiveFilePath}, error extracting archive. {e.Message}");
+                throw new FileEncryptedException(e.Message);
             }
-
-            return fileMapping;
         }
     }
 }

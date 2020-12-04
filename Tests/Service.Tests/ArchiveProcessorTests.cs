@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Service.Configuration;
 using Service.Enums;
 using Service.ErrorReport;
+using Service.Exceptions;
 using Service.Interfaces;
 using Service.Messaging;
 using System;
@@ -45,7 +46,7 @@ namespace Service.Tests
                 _mockConfig = new Mock<IArchiveProcessorConfig>();
                 _mockLogger = new Mock<ILogger<ArchiveProcessor>>();
 
-                _mockConfig.SetupGet(s => s.ProcessingTimeoutDuration).Returns(TimeSpan.FromSeconds(1));
+                _mockConfig.SetupGet(s => s.ProcessingTimeoutDuration).Returns(TimeSpan.FromSeconds(1222));
 
 
                 _archiveProcessor = new ArchiveProcessor(
@@ -106,7 +107,7 @@ namespace Service.Tests
                 _mockConfig.SetupGet(s => s.InputPath).Returns(expectedInput);
                 _mockConfig.SetupGet(s => s.OutputPath).Returns(expectedOutput);
                 _mockFileManager.Setup(s => s.FileExists(It.IsAny<string>())).Returns(true);
-                _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>())).Returns(new Dictionary<Guid, string>());
+                _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>())).Throws(new FileEncryptedException());
                 _mockPasswordProtectedReportGenerator.Setup(s => s.CreateReport(It.IsAny<string>())).Returns(expectedReport);
 
                 var respQueue = new Mock<IProducerConsumerCollection<KeyValuePair<Guid, AdaptationOutcome>>>();

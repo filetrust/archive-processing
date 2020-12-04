@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Service.Exceptions;
 using Service.Interfaces;
 using SharpCompress.Archives;
 using SharpCompress.Archives.GZip;
@@ -35,10 +36,10 @@ namespace Service.Archive
 
         public IDictionary<Guid, string> ExtractArchive(string archiveFilePath, string targetPath)
         {
-            var fileMapping = new Dictionary<Guid, string>();
-            
             try
             {
+                var fileMapping = new Dictionary<Guid, string>();
+
                 using (var archive = GZipArchive.Open(archiveFilePath))
                 {
                     foreach (var entry in archive.Entries.Where(entry => !entry.IsDirectory))
@@ -48,13 +49,14 @@ namespace Service.Archive
                         entry.WriteToFile($"{targetPath}/{fileId}");
                     }
                 }
+
+                return fileMapping;
             }
             catch(Exception e)
             {
                 _logger.LogError($"Archive File Path: {archiveFilePath}, error extracting archive. {e.Message}");
+                throw new FileEncryptedException(e.Message);
             }
-
-            return fileMapping;
         }
     }
 }
