@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.Serialization;
 
 namespace Service.Exceptions
 {
@@ -7,10 +8,13 @@ namespace Service.Exceptions
     {
         public FileEncryptedException()
         {
-
         }
 
         public FileEncryptedException(string message) : base(message)
+        {
+        }
+
+        protected FileEncryptedException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }
