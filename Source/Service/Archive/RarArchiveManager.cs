@@ -1,16 +1,20 @@
 ﻿using Microsoft.Extensions.Logging;
+using Service.Exceptions;
 using Service.Interfaces;
+using SharpCompress.Archives;
+using SharpCompress.Archives.Rar;
 using System;
 using System.Collections.Generic;
 using System.IO.Compression;
+using System.Linq;
 
-namespace Service
+namespace Service.Archive
 {
-    public class ZipArchiveManager : IArchiveManager
+    public class RarArchiveManager : IArchiveManager
     {
-        private readonly ILogger<ZipArchiveManager> _logger;
+        private readonly ILogger<RarArchiveManager> _logger;
 
-        public ZipArchiveManager(ILogger<ZipArchiveManager> logger)
+        public RarArchiveManager(ILogger<RarArchiveManager> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -34,23 +38,21 @@ namespace Service
             {
                 var fileMapping = new Dictionary<Guid, string>();
 
-                using (var archive = ZipFile.OpenRead(archiveFilePath))
+                using (var archive = RarArchive.Open(archiveFilePath))
                 {
-                    foreach (var entry in archive.Entries)
+                    foreach (var entry in archive.Entries.Where(entry => !entry.IsDirectory))
                     {
-                        // Entry is a folder within the archive, don't create mapping and extract.
-                        if (entry.FullName.EndsWith("/"))
-                            continue;
+                        if (entry.IsEncrypted) throw new FileEncryptedException("File is encrypted");
 
                         var fileId = Guid.NewGuid();
-                        fileMapping.Add(fileId, entry.FullName);
-                        entry.ExtractToFile($"{targetPath}/{fileId}");
+                        fileMapping.Add(fileId, entry.Key);
+                        entry.WriteToFile($"{targetPath}/{fileId}");
                     }
                 }
 
                 return fileMapping;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 _logger.LogError($"Archive File Path: {archiveFilePath}, error extracting archive. {e.Message}");
                 return null;
