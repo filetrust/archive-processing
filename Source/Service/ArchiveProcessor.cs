@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Service.Configuration;
 using Service.ErrorReport;
+using Service.Exceptions;
 using Service.Interfaces;
 using Service.Messaging;
 using System;
@@ -93,26 +94,26 @@ namespace Service
             _fileManager.CreateDirectory(_tmpOriginalDirectory);
             _fileManager.CreateDirectory(_tmpRebuiltDirectory);
 
-            _logger.LogInformation($"File Id: {_config.ArchiveFileId} Extracting archive to temp folder {_tmpOriginalDirectory}");
-            var fileMappings = _archiveManager.ExtractArchive(_config.InputPath, _tmpOriginalDirectory);
+            try
+            {
+                _logger.LogInformation($"File Id: {_config.ArchiveFileId} Extracting archive to temp folder {_tmpOriginalDirectory}");
+                var fileMappings = _archiveManager.ExtractArchive(_config.InputPath, _tmpOriginalDirectory);
 
-            if (fileMappings == null)
-            {
-                _logger.LogWarning($"File Id: {_config.ArchiveFileId} Password Protected received");
-                var report = _passwordProtectedReportGenerator.CreateReport(_config.ArchiveFileId);
-                _fileManager.WriteFile(_config.OutputPath, Encoding.UTF8.GetBytes(report));
-            }
-            else
-            {
                 _logger.LogInformation($"File Id: {_config.ArchiveFileId} Creating archive in temp folder {_tmpRebuiltDirectory}");
                 _archiveManager.CreateArchive(_tmpRebuiltDirectory, _config.OutputPath);
-                
+
                 _responseConsumer.SetPendingFiles(new List<Guid>(fileMappings.Keys));
 
                 var senderTask = _responseProducer.SendMessages(_tmpOriginalDirectory, _tmpRebuiltDirectory, _cancellationTokenSource.Token);
                 var consumerTask = _responseConsumer.ConsumeResponses(fileMappings, _tmpRebuiltDirectory, _tmpOriginalDirectory, _cancellationTokenSource.Token);
 
                 Task.WaitAll(senderTask, consumerTask);
+            }
+            catch (FileEncryptedException fee)
+            {
+                _logger.LogWarning($"File Id: {_config.ArchiveFileId} Password Protected received. {fee.Message}");
+                var report = _passwordProtectedReportGenerator.CreateReport(_config.ArchiveFileId);
+                _fileManager.WriteFile(_config.OutputPath, Encoding.UTF8.GetBytes(report));
             }
 
             _adaptationOutcomeSender.Send(FileOutcome.Replace, _config.ArchiveFileId, _config.ReplyTo);

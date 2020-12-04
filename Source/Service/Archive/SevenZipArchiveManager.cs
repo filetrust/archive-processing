@@ -1,16 +1,20 @@
 ﻿using Microsoft.Extensions.Logging;
+using Service.Exceptions;
 using Service.Interfaces;
+using SharpCompress.Archives;
+using SharpCompress.Archives.SevenZip;
 using System;
 using System.Collections.Generic;
 using System.IO.Compression;
+using System.Linq;
 
-namespace Service
+namespace Service.Archive
 {
-    public class ZipArchiveManager : IArchiveManager
+    public class SevenZipArchiveManager : IArchiveManager
     {
-        private readonly ILogger<ZipArchiveManager> _logger;
+        private readonly ILogger<SevenZipArchiveManager> _logger;
 
-        public ZipArchiveManager(ILogger<ZipArchiveManager> logger)
+        public SevenZipArchiveManager(ILogger<SevenZipArchiveManager> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
@@ -34,26 +38,22 @@ namespace Service
             {
                 var fileMapping = new Dictionary<Guid, string>();
 
-                using (var archive = ZipFile.OpenRead(archiveFilePath))
+                using (var archive = SevenZipArchive.Open(archiveFilePath))
                 {
-                    foreach (var entry in archive.Entries)
+                    foreach (var entry in archive.Entries.Where(entry => !entry.IsDirectory))
                     {
-                        // Entry is a folder within the archive, don't create mapping and extract.
-                        if (entry.FullName.EndsWith("/"))
-                            continue;
-
                         var fileId = Guid.NewGuid();
-                        fileMapping.Add(fileId, entry.FullName);
-                        entry.ExtractToFile($"{targetPath}/{fileId}");
+                        fileMapping.Add(fileId, entry.Key);
+                        entry.WriteToFile($"{targetPath}/{fileId}");
                     }
                 }
 
                 return fileMapping;
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 _logger.LogError($"Archive File Path: {archiveFilePath}, error extracting archive. {e.Message}");
-                return null;
+                throw new FileEncryptedException(e.Message);
             }
         }
     }

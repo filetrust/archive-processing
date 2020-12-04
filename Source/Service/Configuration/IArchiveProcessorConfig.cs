@@ -5,6 +5,7 @@ namespace Service.Configuration
     public interface IArchiveProcessorConfig
     {
         string ArchiveFileId { get; }
+        string ArchiveFileType { get; }
         string InputPath { get; }
         string OutputPath { get; }
         string ReplyTo { get; }
