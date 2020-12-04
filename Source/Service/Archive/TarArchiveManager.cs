@@ -44,10 +44,10 @@ namespace Service.Archive
 
         public IDictionary<Guid, string> ExtractArchive(string archiveFilePath, string targetPath)
         {
+            var fileMapping = new Dictionary<Guid, string>();
+
             try
             {
-                var fileMapping = new Dictionary<Guid, string>();
-
                 using (var archive = TarArchive.Open(archiveFilePath))
                 {
                     foreach (var entry in archive.Entries.Where(entry => !entry.IsDirectory))
@@ -58,13 +58,13 @@ namespace Service.Archive
                     }
                 }
 
-                return fileMapping;
             }
             catch(Exception e)
             {
                 _logger.LogError($"Archive File Path: {archiveFilePath}, error extracting archive. {e.Message}");
-                return null;
             }
+
+            return fileMapping;
         }
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Service.Exceptions
 {
+    [Serializable]
     public class FileEncryptedException : ApplicationException
     {
         public FileEncryptedException()

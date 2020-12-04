@@ -106,7 +106,7 @@ namespace Service.Tests
                 _mockConfig.SetupGet(s => s.InputPath).Returns(expectedInput);
                 _mockConfig.SetupGet(s => s.OutputPath).Returns(expectedOutput);
                 _mockFileManager.Setup(s => s.FileExists(It.IsAny<string>())).Returns(true);
-                _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>())).Returns((IDictionary<Guid, string>)null);
+                _mockArchiveManager.Setup(s => s.ExtractArchive(It.IsAny<string>(), It.IsAny<string>())).Returns(new Dictionary<Guid, string>());
                 _mockPasswordProtectedReportGenerator.Setup(s => s.CreateReport(It.IsAny<string>())).Returns(expectedReport);
 
                 var respQueue = new Mock<IProducerConsumerCollection<KeyValuePair<Guid, AdaptationOutcome>>>();

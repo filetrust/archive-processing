@@ -96,7 +96,7 @@ namespace Service
             _logger.LogInformation($"File Id: {_config.ArchiveFileId} Extracting archive to temp folder {_tmpOriginalDirectory}");
             var fileMappings = _archiveManager.ExtractArchive(_config.InputPath, _tmpOriginalDirectory);
 
-            if (fileMappings == null)
+            if (fileMappings.Count == 0)
             {
                 _logger.LogWarning($"File Id: {_config.ArchiveFileId} Password Protected received");
                 var report = _passwordProtectedReportGenerator.CreateReport(_config.ArchiveFileId);
