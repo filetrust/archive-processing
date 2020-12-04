@@ -1,14 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
-using Service.Enums;
 using Service.Interfaces;
 using SharpCompress.Archives;
 using SharpCompress.Archives.GZip;
-using SharpCompress.Archives.Tar;
 using SharpCompress.Common;
 using SharpCompress.Writers;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 namespace Service.Archive

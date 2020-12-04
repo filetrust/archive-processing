@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Logging;
-using Service.Enums;
 using Service.Interfaces;
 using SharpCompress.Archives;
 using SharpCompress.Archives.SevenZip;
