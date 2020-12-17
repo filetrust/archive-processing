@@ -3,9 +3,11 @@ using Service.Exceptions;
 using Service.Interfaces;
 using SharpCompress.Archives;
 using SharpCompress.Archives.SevenZip;
+using SharpCompress.Common;
+using SharpCompress.Writers;
 using System;
 using System.Collections.Generic;
-using System.IO.Compression;
+using System.IO;
 using System.Linq;
 
 namespace Service.Archive
@@ -21,15 +23,24 @@ namespace Service.Archive
 
         public void AddToArchive(string archiveFilePath, string sourceFilePath, string fileName)
         {
-            using (var archive = ZipFile.Open(archiveFilePath, ZipArchiveMode.Update))
+            var tempArchiveName = $"{archiveFilePath}_archiveTmp";
+
+            using (var archive = SharpCompress.Archives.Zip.ZipArchive.Open(archiveFilePath))
             {
-                archive.CreateEntryFromFile(sourceFilePath, fileName);
+                archive.AddEntry(fileName, sourceFilePath);
+                archive.SaveTo(tempArchiveName, new WriterOptions(CompressionType.LZMA));
             }
+
+            File.Copy(tempArchiveName, archiveFilePath, true);
+            File.Delete(tempArchiveName);
         }
 
         public void CreateArchive(string sourceFolderPath, string archiveFilePath)
         {
-            ZipFile.CreateFromDirectory(sourceFolderPath, archiveFilePath);
+            using (var archive = SharpCompress.Archives.Zip.ZipArchive.Create())
+            {
+                archive.SaveTo(archiveFilePath, new WriterOptions(CompressionType.LZMA));
+            }
         }
 
         public IDictionary<Guid, string> ExtractArchive(string archiveFilePath, string targetPath)
