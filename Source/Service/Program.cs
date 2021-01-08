@@ -24,7 +24,8 @@ namespace Service
                 {
                     Endpoint = configuration.MetricsEndpoint,
                     Job = "archive-processing",
-                    IntervalMilliseconds = 5
+                    IntervalMilliseconds = 5,
+                    Instance = configuration.ArchiveFileId
                 });
 
                 pusher.Start();
