@@ -16,5 +16,6 @@ namespace Service.Configuration
         int AdaptationRequestQueuePort { get; }
         string ArchiveErrorReportMessage { get; }
         string ArchivePasswordProtectedReportMessage { get; }
+        string MetricsEndpoint { get; }
     }
 }
