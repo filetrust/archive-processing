@@ -1,9 +1,11 @@
 ﻿using Microsoft.Extensions.Logging;
+using Prometheus;
 using Service.Configuration;
 using Service.ErrorReport;
 using Service.Exceptions;
 using Service.Interfaces;
 using Service.Messaging;
+using Service.Prometheus;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -55,30 +57,35 @@ namespace Service
 
         public void Process()
         {
-            var task = Task.Run(() =>
+            using (MetricsCounters.ProcTime.NewTimer())
             {
-                return ProcessArchive();
-            });
-
-            try
-            {
-                bool isCompletedSuccessfully = task.Wait(_processingTimeoutDuration);
-
-                if (!isCompletedSuccessfully)
+                var task = Task.Run(() =>
                 {
-                    _logger.LogError($"File Id: {_config.ArchiveFileId} exceeded {_processingTimeoutDuration}s");
+                    return ProcessArchive();
+                });
+
+                try
+                {
+                    bool isCompletedSuccessfully = task.Wait(_processingTimeoutDuration);
+
+                    if (!isCompletedSuccessfully)
+                    {
+                        MetricsCounters.ProcCnt.WithLabels(Labels.Timeout).Inc();
+                        _logger.LogError($"File Id: {_config.ArchiveFileId} exceeded {_processingTimeoutDuration}s");
+                        _cancellationTokenSource.Cancel();
+                        ClearRebuiltStore(_tmpRebuiltDirectory, _config.OutputPath);
+                        ClearSourceStore(_tmpOriginalDirectory);
+                    }
+                }
+                catch (Exception e)
+                {
+                    MetricsCounters.ProcCnt.WithLabels(Labels.Exception).Inc();
+                    _logger.LogError($"File Id: {_config.ArchiveFileId} threw exception {e.Message}");
                     _cancellationTokenSource.Cancel();
                     ClearRebuiltStore(_tmpRebuiltDirectory, _config.OutputPath);
                     ClearSourceStore(_tmpOriginalDirectory);
+                    _adaptationOutcomeSender.Send(FileOutcome.Error, _config.ArchiveFileId, _config.ReplyTo);
                 }
-            }
-            catch (Exception e)
-            {
-                _logger.LogError($"File Id: {_config.ArchiveFileId} threw exception {e.Message}");
-                _cancellationTokenSource.Cancel();
-                ClearRebuiltStore(_tmpRebuiltDirectory, _config.OutputPath);
-                ClearSourceStore(_tmpOriginalDirectory);
-                _adaptationOutcomeSender.Send(FileOutcome.Error, _config.ArchiveFileId, _config.ReplyTo);
             }
         }
 
@@ -120,6 +127,7 @@ namespace Service
             ClearSourceStore(_tmpOriginalDirectory);
             ClearRebuiltStore(_tmpRebuiltDirectory);
 
+            MetricsCounters.ProcCnt.WithLabels(Labels.Ok).Inc();
             return Task.CompletedTask;
         }
 
